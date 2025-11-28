@@ -27,6 +27,7 @@ type Category struct {
 	URL                      string
 	URLKey                   string
 	DefaultParentCategoryID  *int64
+	ParentCategories         []Category
 	Attributes               []CategoryAttribute
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
@@ -51,7 +52,8 @@ func NewCategory(name, description, url, urlKey string) *Category {
 		Archived:    false,
 		CreatedAt:   now,
 		UpdatedAt:   now,
-		Attributes:  make([]CategoryAttribute, 0),
+		Attributes:       make([]CategoryAttribute, 0),
+		ParentCategories: make([]Category, 0),
 	}
 }
 
@@ -73,9 +75,15 @@ func (c *Category) SetParentCategory(parentID int64) {
 	c.UpdatedAt = time.Now()
 }
 
-// RemoveParentCategory removes the parent category relationship
-func (c *Category) RemoveParentCategory() {
+// RemoveDefaultParentCategory removes the default parent category relationship
+func (c *Category) RemoveDefaultParentCategory() {
 	c.DefaultParentCategoryID = nil
+	c.UpdatedAt = time.Now()
+}
+
+// AddParentCategory adds a parent category to the list
+func (c *Category) AddParentCategory(category Category) {
+	c.ParentCategories = append(c.ParentCategories, category)
 	c.UpdatedAt = time.Now()
 }
 

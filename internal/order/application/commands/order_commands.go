@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/qhato/ecommerce/internal/order/domain"
-	"github.com/qhato/ecommerce/pkg/apperrors"
+	"github.com/qhato/ecommerce/pkg/errors"
 	"github.com/qhato/ecommerce/pkg/event"
 	"github.com/qhato/ecommerce/pkg/logger"
 )
@@ -14,12 +14,12 @@ import (
 // OrderCommandHandler handles order commands
 type OrderCommandHandler struct {
 	repo     domain.OrderRepository
-	eventBus event.EventBus
+	eventBus event.Bus
 	log      *logger.Logger
 }
 
 // NewOrderCommandHandler creates a new OrderCommandHandler
-func NewOrderCommandHandler(repo domain.OrderRepository, eventBus event.EventBus, log *logger.Logger) *OrderCommandHandler {
+func NewOrderCommandHandler(repo domain.OrderRepository, eventBus event.Bus, log *logger.Logger) *OrderCommandHandler {
 	return &OrderCommandHandler{
 		repo:     repo,
 		eventBus: eventBus,
@@ -29,11 +29,14 @@ func NewOrderCommandHandler(repo domain.OrderRepository, eventBus event.EventBus
 
 // CreateOrder creates a new order
 func (h *OrderCommandHandler) CreateOrder(ctx context.Context, customerID int64, emailAddress, name, currencyCode string, items []domain.OrderItem) (*domain.Order, error) {
-	h.log.Info("Creating new order", "customerID", customerID, "email", emailAddress)
+	h.log.WithFields(map[string]interface{}{
+		"customerID": customerID,
+		"email":      emailAddress,
+	}).Info("Creating new order")
 
 	// Validate items
 	if len(items) == 0 {
-		return nil, apperrors.NewValidationError("order must have at least one item")
+		return nil, errors.ValidationError("order must have at least one item")
 	}
 
 	// Create order
@@ -49,32 +52,38 @@ func (h *OrderCommandHandler) CreateOrder(ctx context.Context, customerID int64,
 
 	// Save order
 	if err := h.repo.Create(ctx, order); err != nil {
-		h.log.Error("Failed to create order", "error", err)
-		return nil, apperrors.NewInternalError("failed to create order", err)
+		h.log.WithError(err).Error("Failed to create order")
+		return nil, errors.InternalWrap(err, "failed to create order")
 	}
 
 	// Publish event
 	evt := domain.NewOrderCreatedEvent(order.ID, order.OrderNumber, order.CustomerID, order.Total, order.CurrencyCode)
 	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.Error("Failed to publish order created event", "error", err)
+		h.log.WithError(err).Error("Failed to publish order created event")
 	}
 
-	h.log.Info("Order created successfully", "orderID", order.ID, "orderNumber", order.OrderNumber)
+	h.log.WithFields(map[string]interface{}{
+		"orderID":     order.ID,
+		"orderNumber": order.OrderNumber,
+	}).Info("Order created successfully")
 	return order, nil
 }
 
 // UpdateOrderStatus updates the status of an order
 func (h *OrderCommandHandler) UpdateOrderStatus(ctx context.Context, orderID int64, status domain.OrderStatus) error {
-	h.log.Info("Updating order status", "orderID", orderID, "status", status)
+	h.log.WithFields(map[string]interface{}{
+		"orderID": orderID,
+		"status":  status,
+	}).Info("Updating order status")
 
 	// Find order
 	order, err := h.repo.FindByID(ctx, orderID)
 	if err != nil {
-		h.log.Error("Failed to find order", "error", err)
+		h.log.WithError(err).Error("Failed to find order")
 		return err
 	}
 	if order == nil {
-		return apperrors.NewNotFoundError("order", orderID)
+		return errors.NotFound(fmt.Sprintf("order %d", orderID))
 	}
 
 	// Update status
@@ -82,31 +91,34 @@ func (h *OrderCommandHandler) UpdateOrderStatus(ctx context.Context, orderID int
 
 	// Save order
 	if err := h.repo.Update(ctx, order); err != nil {
-		h.log.Error("Failed to update order status", "error", err)
-		return apperrors.NewInternalError("failed to update order status", err)
+		h.log.WithError(err).Error("Failed to update order status")
+		return errors.InternalWrap(err, "failed to update order status")
 	}
 
-	h.log.Info("Order status updated successfully", "orderID", orderID, "status", status)
+	h.log.WithFields(map[string]interface{}{
+		"orderID": orderID,
+		"status":  status,
+	}).Info("Order status updated successfully")
 	return nil
 }
 
 // SubmitOrder submits an order for processing
 func (h *OrderCommandHandler) SubmitOrder(ctx context.Context, orderID int64) error {
-	h.log.Info("Submitting order", "orderID", orderID)
+	h.log.WithField("orderID", orderID).Info("Submitting order")
 
 	// Find order
 	order, err := h.repo.FindByID(ctx, orderID)
 	if err != nil {
-		h.log.Error("Failed to find order", "error", err)
+		h.log.WithError(err).Error("Failed to find order")
 		return err
 	}
 	if order == nil {
-		return apperrors.NewNotFoundError("order", orderID)
+		return errors.NotFound(fmt.Sprintf("order %d", orderID))
 	}
 
 	// Validate order can be submitted
 	if order.Status != domain.OrderStatusPending {
-		return apperrors.NewValidationError("only pending orders can be submitted")
+		return errors.ValidationError("only pending orders can be submitted")
 	}
 
 	// Submit order
@@ -114,43 +126,43 @@ func (h *OrderCommandHandler) SubmitOrder(ctx context.Context, orderID int64) er
 
 	// Save order
 	if err := h.repo.Update(ctx, order); err != nil {
-		h.log.Error("Failed to submit order", "error", err)
-		return apperrors.NewInternalError("failed to submit order", err)
+		h.log.WithError(err).Error("Failed to submit order")
+		return errors.InternalWrap(err, "failed to submit order")
 	}
 
 	// Publish event
 	evt := &domain.OrderSubmittedEvent{
-		BaseEvent:   event.BaseEvent{EventType: domain.EventOrderSubmitted, Timestamp: time.Now()},
+		BaseEvent:   event.BaseEvent{Type: domain.EventOrderSubmitted, OccurredOn: time.Now()},
 		OrderID:     order.ID,
 		OrderNumber: order.OrderNumber,
 		CustomerID:  order.CustomerID,
 		Total:       order.Total,
 	}
 	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.Error("Failed to publish order submitted event", "error", err)
+		h.log.WithError(err).Error("Failed to publish order submitted event")
 	}
 
-	h.log.Info("Order submitted successfully", "orderID", orderID)
+	h.log.WithField("orderID", orderID).Info("Order submitted successfully")
 	return nil
 }
 
 // CancelOrder cancels an order
 func (h *OrderCommandHandler) CancelOrder(ctx context.Context, orderID int64) error {
-	h.log.Info("Cancelling order", "orderID", orderID)
+	h.log.WithField("orderID", orderID).Info("Cancelling order")
 
 	// Find order
 	order, err := h.repo.FindByID(ctx, orderID)
 	if err != nil {
-		h.log.Error("Failed to find order", "error", err)
+		h.log.WithError(err).Error("Failed to find order")
 		return err
 	}
 	if order == nil {
-		return apperrors.NewNotFoundError("order", orderID)
+		return errors.NotFound(fmt.Sprintf("order %d", orderID))
 	}
 
 	// Validate order can be cancelled
 	if !order.IsCancellable() {
-		return apperrors.NewValidationError("order cannot be cancelled in current status")
+		return errors.ValidationError("order cannot be cancelled in current status")
 	}
 
 	// Cancel order
@@ -158,42 +170,45 @@ func (h *OrderCommandHandler) CancelOrder(ctx context.Context, orderID int64) er
 
 	// Save order
 	if err := h.repo.Update(ctx, order); err != nil {
-		h.log.Error("Failed to cancel order", "error", err)
-		return apperrors.NewInternalError("failed to cancel order", err)
+		h.log.WithError(err).Error("Failed to cancel order")
+		return errors.InternalWrap(err, "failed to cancel order")
 	}
 
 	// Publish event
 	evt := &domain.OrderCancelledEvent{
-		BaseEvent:   event.BaseEvent{EventType: domain.EventOrderCancelled, Timestamp: time.Now()},
+		BaseEvent:   event.BaseEvent{Type: domain.EventOrderCancelled, OccurredOn: time.Now()},
 		OrderID:     order.ID,
 		OrderNumber: order.OrderNumber,
 		CustomerID:  order.CustomerID,
 	}
 	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.Error("Failed to publish order cancelled event", "error", err)
+		h.log.WithError(err).Error("Failed to publish order cancelled event")
 	}
 
-	h.log.Info("Order cancelled successfully", "orderID", orderID)
+	h.log.WithField("orderID", orderID).Info("Order cancelled successfully")
 	return nil
 }
 
 // AddOrderItem adds an item to an existing order
 func (h *OrderCommandHandler) AddOrderItem(ctx context.Context, orderID, skuID int64, productName string, quantity int, price float64) error {
-	h.log.Info("Adding item to order", "orderID", orderID, "skuID", skuID)
+	h.log.WithFields(map[string]interface{}{
+		"orderID": orderID,
+		"skuID":   skuID,
+	}).Info("Adding item to order")
 
 	// Find order
 	order, err := h.repo.FindByID(ctx, orderID)
 	if err != nil {
-		h.log.Error("Failed to find order", "error", err)
+		h.log.WithError(err).Error("Failed to find order")
 		return err
 	}
 	if order == nil {
-		return apperrors.NewNotFoundError("order", orderID)
+		return errors.NotFound(fmt.Sprintf("order %d", orderID))
 	}
 
 	// Validate order is in editable state
 	if order.Status != domain.OrderStatusPending {
-		return apperrors.NewValidationError("items can only be added to pending orders")
+		return errors.ValidationError("items can only be added to pending orders")
 	}
 
 	// Add item
@@ -201,11 +216,14 @@ func (h *OrderCommandHandler) AddOrderItem(ctx context.Context, orderID, skuID i
 
 	// Save order
 	if err := h.repo.Update(ctx, order); err != nil {
-		h.log.Error("Failed to add item to order", "error", err)
-		return apperrors.NewInternalError("failed to add item to order", err)
+		h.log.WithError(err).Error("Failed to add item to order")
+		return errors.InternalWrap(err, "failed to add item to order")
 	}
 
-	h.log.Info("Item added to order successfully", "orderID", orderID, "skuID", skuID)
+	h.log.WithFields(map[string]interface{}{
+		"orderID": orderID,
+		"skuID":   skuID,
+	}).Info("Item added to order successfully")
 	return nil
 }
 

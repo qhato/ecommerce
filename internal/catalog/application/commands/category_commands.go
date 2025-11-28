@@ -85,7 +85,7 @@ func NewCategoryCommandHandler(
 func (h *CategoryCommandHandler) HandleCreateCategory(ctx context.Context, cmd *CreateCategoryCommand) (int64, error) {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return 0, errors.NewValidationError("invalid create category command", err)
+		return 0, errors.ValidationError("invalid create category command").WithInternal(err)
 	}
 
 	// Create category entity
@@ -123,17 +123,17 @@ func (h *CategoryCommandHandler) HandleCreateCategory(ctx context.Context, cmd *
 
 	// Save to repository
 	if err := h.repo.Create(ctx, category); err != nil {
-		h.logger.Error("failed to create category", "error", err)
-		return 0, errors.Wrap(err, "failed to create category")
+		h.logger.WithError(err).Error("failed to create category")
+		return 0, errors.InternalWrap(err, "failed to create category")
 	}
 
 	// Publish domain event
 	event := domain.NewCategoryCreatedEvent(category.ID, category.Name, category.DefaultParentCategoryID)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish category created event", "error", err)
+		h.logger.WithError(err).Error("failed to publish category created event")
 	}
 
-	h.logger.Info("category created", "category_id", category.ID)
+	h.logger.WithField("category_id", category.ID).Info("category created")
 	return category.ID, nil
 }
 
@@ -141,17 +141,17 @@ func (h *CategoryCommandHandler) HandleCreateCategory(ctx context.Context, cmd *
 func (h *CategoryCommandHandler) HandleUpdateCategory(ctx context.Context, cmd *UpdateCategoryCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid update category command", err)
+		return errors.ValidationError("invalid update category command").WithInternal(err)
 	}
 
 	// Find existing category
 	category, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "category not found")
+		return errors.InternalWrap(err, "category not found")
 	}
 
 	if category.Archived {
-		return errors.NewBusinessError("cannot update archived category")
+		return errors.Conflict("cannot update archived category")
 	}
 
 	// Track changes for event
@@ -181,7 +181,7 @@ func (h *CategoryCommandHandler) HandleUpdateCategory(ctx context.Context, cmd *
 	}
 	if cmd.DefaultParentCategoryID != nil {
 		if *cmd.DefaultParentCategoryID == 0 {
-			category.RemoveParentCategory()
+			category.RemoveDefaultParentCategory()
 		} else {
 			category.SetParentCategory(*cmd.DefaultParentCategoryID)
 		}
@@ -202,19 +202,19 @@ func (h *CategoryCommandHandler) HandleUpdateCategory(ctx context.Context, cmd *
 
 	// Save to repository
 	if err := h.repo.Update(ctx, category); err != nil {
-		h.logger.Error("failed to update category", "error", err, "category_id", cmd.ID)
-		return errors.Wrap(err, "failed to update category")
+		h.logger.WithField("category_id", cmd.ID).WithError(err).Error("failed to update category")
+		return errors.InternalWrap(err, "failed to update category")
 	}
 
 	// Publish domain event
 	if len(changes) > 0 {
 		event := domain.NewCategoryUpdatedEvent(category.ID, changes)
 		if err := h.eventBus.Publish(ctx, event); err != nil {
-			h.logger.Error("failed to publish category updated event", "error", err)
+			h.logger.WithError(err).Error("failed to publish category updated event")
 		}
 	}
 
-	h.logger.Info("category updated", "category_id", category.ID)
+	h.logger.WithField("category_id", category.ID).Info("category updated")
 	return nil
 }
 
@@ -222,27 +222,27 @@ func (h *CategoryCommandHandler) HandleUpdateCategory(ctx context.Context, cmd *
 func (h *CategoryCommandHandler) HandleDeleteCategory(ctx context.Context, cmd *DeleteCategoryCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid delete category command", err)
+		return errors.ValidationError("invalid delete category command").WithInternal(err)
 	}
 
 	// Check if category exists
 	category, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "category not found")
+		return errors.InternalWrap(err, "category not found")
 	}
 
 	// Soft delete (archive)
 	if err := h.repo.Delete(ctx, cmd.ID); err != nil {
-		h.logger.Error("failed to delete category", "error", err, "category_id", cmd.ID)
-		return errors.Wrap(err, "failed to delete category")
+		h.logger.WithField("category_id", cmd.ID).WithError(err).Error("failed to delete category")
+		return errors.InternalWrap(err, "failed to delete category")
 	}
 
 	// Publish domain event (reusing archive event type)
 	event := domain.NewCategoryUpdatedEvent(category.ID, map[string]interface{}{"archived": true})
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish category archived event", "error", err)
+		h.logger.WithError(err).Error("failed to publish category archived event")
 	}
 
-	h.logger.Info("category deleted (archived)", "category_id", cmd.ID)
+	h.logger.WithField("category_id", cmd.ID).Info("category deleted (archived)")
 	return nil
 }

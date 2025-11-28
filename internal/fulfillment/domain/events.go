@@ -24,7 +24,7 @@ type ShipmentCreatedEvent struct {
 
 func NewShipmentCreatedEvent(shipmentID, orderID int64, carrier, shippingMethod string, shippingCost float64) *ShipmentCreatedEvent {
 	return &ShipmentCreatedEvent{
-		BaseEvent:      event.BaseEvent{EventType: EventShipmentCreated, Timestamp: time.Now()},
+		BaseEvent:      event.BaseEvent{Type: EventShipmentCreated, OccurredOn: time.Now()},
 		ShipmentID:     shipmentID,
 		OrderID:        orderID,
 		Carrier:        carrier,
@@ -33,9 +33,7 @@ func NewShipmentCreatedEvent(shipmentID, orderID int64, carrier, shippingMethod 
 	}
 }
 
-func (e *ShipmentCreatedEvent) Type() string {
-	return e.EventType
-}
+
 
 type ShipmentShippedEvent struct {
 	event.BaseEvent
@@ -45,9 +43,7 @@ type ShipmentShippedEvent struct {
 	Carrier        string `json:"carrier"`
 }
 
-func (e *ShipmentShippedEvent) Type() string {
-	return e.EventType
-}
+
 
 type ShipmentDeliveredEvent struct {
 	event.BaseEvent
@@ -56,9 +52,7 @@ type ShipmentDeliveredEvent struct {
 	TrackingNumber string `json:"tracking_number"`
 }
 
-func (e *ShipmentDeliveredEvent) Type() string {
-	return e.EventType
-}
+
 
 type ShipmentCancelledEvent struct {
 	event.BaseEvent
@@ -66,6 +60,4 @@ type ShipmentCancelledEvent struct {
 	OrderID    int64 `json:"order_id"`
 }
 
-func (e *ShipmentCancelledEvent) Type() string {
-	return e.EventType
-}
+

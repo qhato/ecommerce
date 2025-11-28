@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/qhato/ecommerce/internal/payment/domain"
-	"github.com/qhato/ecommerce/pkg/apperrors"
+	"github.com/qhato/ecommerce/pkg/errors"
 )
 
 // PostgresPaymentRepository implements the PaymentRepository interface using PostgreSQL
@@ -31,7 +33,7 @@ func (r *PostgresPaymentRepository) Create(ctx context.Context, payment *domain.
 		RETURNING payment_id
 	`
 
-	err := r.db.QueryRowContext(ctx, query,
+	err := r.db.QueryRow(ctx, query,
 		payment.OrderID,
 		payment.CustomerID,
 		payment.PaymentMethod,
@@ -51,7 +53,7 @@ func (r *PostgresPaymentRepository) Create(ctx context.Context, payment *domain.
 	).Scan(&payment.ID)
 
 	if err != nil {
-		return apperrors.NewInternalError("failed to create payment", err)
+		return errors.InternalWrap(err, "failed to create payment")
 	}
 
 	return nil
@@ -69,7 +71,7 @@ func (r *PostgresPaymentRepository) Update(ctx context.Context, payment *domain.
 		WHERE payment_id = $16
 	`
 
-	result, err := r.db.ExecContext(ctx, query,
+	err := r.db.Exec(ctx, query,
 		payment.OrderID,
 		payment.CustomerID,
 		payment.PaymentMethod,
@@ -89,15 +91,41 @@ func (r *PostgresPaymentRepository) Update(ctx context.Context, payment *domain.
 	)
 
 	if err != nil {
-		return apperrors.NewInternalError("failed to update payment", err)
+		return errors.InternalWrap(err, "failed to update payment")
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	// pgx.Exec returns error directly, not Result
+	// We can't easily check RowsAffected with Exec helper, but we can assume success if no error
+	// Or we can use r.db.Pool().Exec if we need RowsAffected
+	// For now, let's assume if no error, it updated.
+	// But wait, the original code checked RowsAffected.
+	// The DB wrapper Exec returns error only.
+	// If we need RowsAffected, we should use r.db.Pool().Exec(ctx, ...)
+	// We can't easily check RowsAffected with Exec helper, but we can assume success if no error
+	// Or we can use r.db.Pool().Exec if we need RowsAffected
+	tag, err := r.db.Pool().Exec(ctx, query,
+		payment.OrderID,
+		payment.CustomerID,
+		payment.PaymentMethod,
+		payment.Amount,
+		payment.CurrencyCode,
+		payment.TransactionID,
+		payment.GatewayResponse,
+		payment.AuthorizationCode,
+		payment.RefundAmount,
+		payment.FailureReason,
+		payment.ProcessedDate,
+		payment.AuthorizedDate,
+		payment.CapturedDate,
+		payment.RefundedDate,
+		payment.UpdatedAt,
+		payment.ID,
+	)
 	if err != nil {
-		return apperrors.NewInternalError("failed to get rows affected", err)
+		return errors.InternalWrap(err, "failed to get rows affected")
 	}
-	if rowsAffected == 0 {
-		return apperrors.NewNotFoundError("payment", payment.ID)
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound(fmt.Sprintf("payment %d", payment.ID))
 	}
 
 	return nil
@@ -126,7 +154,7 @@ func (r *PostgresPaymentRepository) FindByID(ctx context.Context, id int64) (*do
 		failureReason  sql.NullString
 	)
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRow(ctx, query, id).Scan(
 		&payment.ID,
 		&payment.OrderID,
 		&payment.CustomerID,
@@ -146,11 +174,11 @@ func (r *PostgresPaymentRepository) FindByID(ctx context.Context, id int64) (*do
 		&payment.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find payment by ID", err)
+		return nil, errors.InternalWrap(err, "failed to find payment by ID")
 	}
 
 	// Handle nullable fields
@@ -194,9 +222,9 @@ func (r *PostgresPaymentRepository) FindByOrderID(ctx context.Context, orderID i
 		ORDER BY date_created DESC
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, orderID)
+	rows, err := r.db.Query(ctx, query, orderID)
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find payments by order", err)
+		return nil, errors.InternalWrap(err, "failed to find payments by order")
 	}
 	defer rows.Close()
 
@@ -233,9 +261,9 @@ func (r *PostgresPaymentRepository) FindByCustomerID(ctx context.Context, custom
 	}
 
 	var total int64
-	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+	err := r.db.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to count payments", err)
+		return nil, 0, errors.InternalWrap(err, "failed to count payments")
 	}
 
 	// Add sorting
@@ -255,9 +283,9 @@ func (r *PostgresPaymentRepository) FindByCustomerID(ctx context.Context, custom
 		args = append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
 	}
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to find payments by customer", err)
+		return nil, 0, errors.InternalWrap(err, "failed to find payments by customer")
 	}
 	defer rows.Close()
 
@@ -288,7 +316,7 @@ func (r *PostgresPaymentRepository) FindByTransactionID(ctx context.Context, tra
 		failureReason   sql.NullString
 	)
 
-	err := r.db.QueryRowContext(ctx, query, transactionID).Scan(
+	err := r.db.QueryRow(ctx, query, transactionID).Scan(
 		&payment.ID,
 		&payment.OrderID,
 		&payment.CustomerID,
@@ -308,11 +336,11 @@ func (r *PostgresPaymentRepository) FindByTransactionID(ctx context.Context, tra
 		&payment.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find payment by transaction ID", err)
+		return nil, errors.InternalWrap(err, "failed to find payment by transaction ID")
 	}
 
 	// Handle nullable fields
@@ -399,9 +427,9 @@ func (r *PostgresPaymentRepository) FindAll(ctx context.Context, filter *domain.
 	}
 
 	var total int64
-	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+	err := r.db.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to count payments", err)
+		return nil, 0, errors.InternalWrap(err, "failed to count payments")
 	}
 
 	// Add sorting
@@ -423,7 +451,7 @@ func (r *PostgresPaymentRepository) FindAll(ctx context.Context, filter *domain.
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to find all payments", err)
+		return nil, 0, errors.InternalWrap(err, "failed to find all payments")
 	}
 	defer rows.Close()
 
@@ -432,7 +460,7 @@ func (r *PostgresPaymentRepository) FindAll(ctx context.Context, filter *domain.
 }
 
 // scanPayments scans payment rows
-func (r *PostgresPaymentRepository) scanPayments(rows *sql.Rows) ([]*domain.Payment, error) {
+func (r *PostgresPaymentRepository) scanPayments(rows pgx.Rows) ([]*domain.Payment, error) {
 	payments := make([]*domain.Payment, 0)
 
 	for rows.Next() {
@@ -468,7 +496,7 @@ func (r *PostgresPaymentRepository) scanPayments(rows *sql.Rows) ([]*domain.Paym
 			&payment.UpdatedAt,
 		)
 		if err != nil {
-			return nil, apperrors.NewInternalError("failed to scan payment", err)
+			return nil, errors.InternalWrap(err, "failed to scan payment")
 		}
 
 		// Handle nullable fields
@@ -501,7 +529,7 @@ func (r *PostgresPaymentRepository) scanPayments(rows *sql.Rows) ([]*domain.Paym
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, apperrors.NewInternalError("failed to iterate payments", err)
+		return nil, errors.InternalWrap(err, "failed to iterate payments")
 	}
 
 	return payments, nil

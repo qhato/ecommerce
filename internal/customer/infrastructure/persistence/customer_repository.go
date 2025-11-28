@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/qhato/ecommerce/internal/customer/domain"
-	"github.com/qhato/ecommerce/pkg/apperrors"
+	"github.com/qhato/ecommerce/pkg/errors"
 )
 
 // PostgresCustomerRepository implements the CustomerRepository interface using PostgreSQL
@@ -55,7 +55,7 @@ func (r *PostgresCustomerRepository) Create(ctx context.Context, customer *domai
 	).Scan(&customer.ID)
 
 	if err != nil {
-		return apperrors.NewInternalError("failed to create customer", err)
+		return errors.InternalWrap(err, "failed to create customer")
 	}
 
 	return nil
@@ -98,15 +98,15 @@ func (r *PostgresCustomerRepository) Update(ctx context.Context, customer *domai
 	)
 
 	if err != nil {
-		return apperrors.NewInternalError("failed to update customer", err)
+		return errors.InternalWrap(err, "failed to update customer")
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return apperrors.NewInternalError("failed to get rows affected", err)
+		return errors.InternalWrap(err, "failed to get rows affected")
 	}
 	if rowsAffected == 0 {
-		return apperrors.NewNotFoundError("customer", customer.ID)
+		return errors.NotFound(fmt.Sprintf("customer %d", customer.ID))
 	}
 
 	return nil
@@ -164,7 +164,7 @@ func (r *PostgresCustomerRepository) FindByID(ctx context.Context, id int64) (*d
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find customer by ID", err)
+		return nil, errors.InternalWrap(err, "failed to find customer by ID")
 	}
 
 	// Handle nullable fields
@@ -251,7 +251,7 @@ func (r *PostgresCustomerRepository) FindByEmail(ctx context.Context, email stri
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find customer by email", err)
+		return nil, errors.InternalWrap(err, "failed to find customer by email")
 	}
 
 	// Handle nullable fields
@@ -338,7 +338,7 @@ func (r *PostgresCustomerRepository) FindByUsername(ctx context.Context, usernam
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find customer by username", err)
+		return nil, errors.InternalWrap(err, "failed to find customer by username")
 	}
 
 	// Handle nullable fields
@@ -421,7 +421,7 @@ func (r *PostgresCustomerRepository) FindAll(ctx context.Context, filter *domain
 	var total int64
 	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to count customers", err)
+		return nil, 0, errors.InternalWrap(err, "failed to count customers")
 	}
 
 	// Add sorting
@@ -443,7 +443,7 @@ func (r *PostgresCustomerRepository) FindAll(ctx context.Context, filter *domain
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to find customers", err)
+		return nil, 0, errors.InternalWrap(err, "failed to find customers")
 	}
 	defer rows.Close()
 
@@ -485,7 +485,7 @@ func (r *PostgresCustomerRepository) FindAll(ctx context.Context, filter *domain
 			&customer.UpdatedAt,
 		)
 		if err != nil {
-			return nil, 0, apperrors.NewInternalError("failed to scan customer", err)
+			return nil, 0, errors.InternalWrap(err, "failed to scan customer")
 		}
 
 		// Handle nullable fields
@@ -521,7 +521,7 @@ func (r *PostgresCustomerRepository) FindAll(ctx context.Context, filter *domain
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to iterate customers", err)
+		return nil, 0, errors.InternalWrap(err, "failed to iterate customers")
 	}
 
 	return customers, total, nil
@@ -533,7 +533,7 @@ func (r *PostgresCustomerRepository) ExistsByEmail(ctx context.Context, email st
 	var exists bool
 	err := r.db.QueryRowContext(ctx, query, email).Scan(&exists)
 	if err != nil {
-		return false, apperrors.NewInternalError("failed to check customer by email", err)
+		return false, errors.InternalWrap(err, "failed to check customer by email")
 	}
 	return exists, nil
 }
@@ -544,7 +544,7 @@ func (r *PostgresCustomerRepository) ExistsByUsername(ctx context.Context, usern
 	var exists bool
 	err := r.db.QueryRowContext(ctx, query, username).Scan(&exists)
 	if err != nil {
-		return false, apperrors.NewInternalError("failed to check customer by username", err)
+		return false, errors.InternalWrap(err, "failed to check customer by username")
 	}
 	return exists, nil
 }

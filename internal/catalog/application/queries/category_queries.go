@@ -2,6 +2,9 @@ package queries
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/application"
 	"github.com/qhato/ecommerce/internal/catalog/domain"
@@ -82,20 +85,24 @@ func (h *CategoryQueryHandler) HandleGetCategoryByID(ctx context.Context, query 
 	cacheKey := categoryCacheKey(query.ID)
 	var category *domain.Category
 
-	if err := h.cache.Get(ctx, cacheKey, &category); err == nil && category != nil {
-		h.logger.Debug("category found in cache", "category_id", query.ID)
-		return application.ToCategoryDTO(category), nil
+	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && len(cached) > 0 {
+		if err := json.Unmarshal(cached, &category); err == nil {
+			h.logger.WithField("category_id", query.ID).Debug("category found in cache")
+			return application.ToCategoryDTO(category), nil
+		}
 	}
 
 	// Get from repository
 	category, err := h.repo.FindByID(ctx, query.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "category not found")
+		return nil, errors.InternalWrap(err, "category not found")
 	}
 
 	// Cache the result
-	if err := h.cache.Set(ctx, cacheKey, category, cache.DefaultTTL); err != nil {
-		h.logger.Warn("failed to cache category", "error", err, "category_id", query.ID)
+	if data, err := json.Marshal(category); err == nil {
+		if err := h.cache.Set(ctx, cacheKey, data, 5*time.Minute); err != nil {
+			h.logger.WithField("category_id", query.ID).WithError(err).Warn("failed to cache category")
+		}
 	}
 
 	return application.ToCategoryDTO(category), nil
@@ -109,9 +116,12 @@ func (h *CategoryQueryHandler) HandleGetCategoryByURL(ctx context.Context, query
 	}
 
 	// Cache the result
+	// Cache the result
 	cacheKey := categoryCacheKey(category.ID)
-	if err := h.cache.Set(ctx, cacheKey, category, cache.DefaultTTL); err != nil {
-		h.logger.Warn("failed to cache category", "error", err, "category_id", category.ID)
+	if data, err := json.Marshal(category); err == nil {
+		if err := h.cache.Set(ctx, cacheKey, data, 5*time.Minute); err != nil {
+			h.logger.WithField("category_id", category.ID).WithError(err).Warn("failed to cache category")
+		}
 	}
 
 	return application.ToCategoryDTO(category), nil
@@ -146,7 +156,7 @@ func (h *CategoryQueryHandler) HandleListCategories(ctx context.Context, query *
 	// Get from repository
 	categories, total, err := h.repo.FindAll(ctx, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list categories")
+		return nil, errors.InternalWrap(err, "failed to list categories")
 	}
 
 	// Convert to DTOs
@@ -187,7 +197,7 @@ func (h *CategoryQueryHandler) HandleListCategoriesByParent(ctx context.Context,
 	// Get from repository
 	categories, total, err := h.repo.FindByParentID(ctx, query.ParentID, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list categories by parent")
+		return nil, errors.InternalWrap(err, "failed to list categories by parent")
 	}
 
 	// Convert to DTOs
@@ -228,7 +238,7 @@ func (h *CategoryQueryHandler) HandleListRootCategories(ctx context.Context, que
 	// Get from repository
 	categories, total, err := h.repo.FindRootCategories(ctx, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list root categories")
+		return nil, errors.InternalWrap(err, "failed to list root categories")
 	}
 
 	// Convert to DTOs
@@ -245,7 +255,7 @@ func (h *CategoryQueryHandler) HandleGetCategoryPath(ctx context.Context, query 
 	// Get category path from repository
 	categories, err := h.repo.GetCategoryPath(ctx, query.CategoryID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get category path")
+		return nil, errors.InternalWrap(err, "failed to get category path")
 	}
 
 	// Convert to DTOs
@@ -258,6 +268,4 @@ func (h *CategoryQueryHandler) HandleGetCategoryPath(ctx context.Context, query 
 }
 
 // categoryCacheKey generates a cache key for a category
-func categoryCacheKey(id int64) string {
-	return cache.Key("catalog", "category", id)
-}
+	return fmt.Sprintf("catalog:category:%d", id)

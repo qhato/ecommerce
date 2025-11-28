@@ -24,7 +24,7 @@ type OrderCreatedEvent struct {
 
 func NewOrderCreatedEvent(orderID int64, orderNumber string, customerID int64, total float64, currencyCode string) *OrderCreatedEvent {
 	return &OrderCreatedEvent{
-		BaseEvent:    event.BaseEvent{EventType: EventOrderCreated, Timestamp: time.Now()},
+		BaseEvent:    event.BaseEvent{Type: EventOrderCreated, OccurredOn: time.Now()},
 		OrderID:      orderID,
 		OrderNumber:  orderNumber,
 		CustomerID:   customerID,
@@ -33,9 +33,7 @@ func NewOrderCreatedEvent(orderID int64, orderNumber string, customerID int64, t
 	}
 }
 
-func (e *OrderCreatedEvent) Type() string {
-	return e.EventType
-}
+
 
 type OrderSubmittedEvent struct {
 	event.BaseEvent
@@ -45,9 +43,7 @@ type OrderSubmittedEvent struct {
 	Total       float64 `json:"total"`
 }
 
-func (e *OrderSubmittedEvent) Type() string {
-	return e.EventType
-}
+
 
 type OrderCancelledEvent struct {
 	event.BaseEvent
@@ -56,9 +52,7 @@ type OrderCancelledEvent struct {
 	CustomerID  int64  `json:"customer_id"`
 }
 
-func (e *OrderCancelledEvent) Type() string {
-	return e.EventType
-}
+
 
 type OrderShippedEvent struct {
 	event.BaseEvent
@@ -68,6 +62,4 @@ type OrderShippedEvent struct {
 	TrackingInfo string `json:"tracking_info"`
 }
 
-func (e *OrderShippedEvent) Type() string {
-	return e.EventType
-}
+

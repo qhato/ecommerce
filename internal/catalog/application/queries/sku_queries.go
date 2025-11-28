@@ -2,6 +2,9 @@ package queries
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/application"
 	"github.com/qhato/ecommerce/internal/catalog/domain"
@@ -61,20 +64,24 @@ func (h *SKUQueryHandler) HandleGetSKUByID(ctx context.Context, query *GetSKUByI
 	cacheKey := skuCacheKey(query.ID)
 	var sku *domain.SKU
 
-	if err := h.cache.Get(ctx, cacheKey, &sku); err == nil && sku != nil {
-		h.logger.Debug("SKU found in cache", "sku_id", query.ID)
-		return application.ToSKUDTO(sku), nil
+	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && len(cached) > 0 {
+		if err := json.Unmarshal(cached, &sku); err == nil {
+			h.logger.WithField("sku_id", query.ID).Debug("SKU found in cache")
+			return application.ToSKUDTO(sku), nil
+		}
 	}
 
 	// Get from repository
 	sku, err := h.repo.FindByID(ctx, query.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "SKU not found")
+		return nil, errors.InternalWrap(err, "SKU not found")
 	}
 
 	// Cache the result
-	if err := h.cache.Set(ctx, cacheKey, sku, cache.DefaultTTL); err != nil {
-		h.logger.Warn("failed to cache SKU", "error", err, "sku_id", query.ID)
+	if data, err := json.Marshal(sku); err == nil {
+		if err := h.cache.Set(ctx, cacheKey, data, 5*time.Minute); err != nil {
+			h.logger.WithField("sku_id", query.ID).WithError(err).Warn("failed to cache SKU")
+		}
 	}
 
 	return application.ToSKUDTO(sku), nil
@@ -84,13 +91,15 @@ func (h *SKUQueryHandler) HandleGetSKUByID(ctx context.Context, query *GetSKUByI
 func (h *SKUQueryHandler) HandleGetSKUByUPC(ctx context.Context, query *GetSKUByUPCQuery) (*application.SKUDTO, error) {
 	sku, err := h.repo.FindByUPC(ctx, query.UPC)
 	if err != nil {
-		return nil, errors.Wrap(err, "SKU not found")
+		return nil, errors.InternalWrap(err, "SKU not found")
 	}
 
 	// Cache the result
 	cacheKey := skuCacheKey(sku.ID)
-	if err := h.cache.Set(ctx, cacheKey, sku, cache.DefaultTTL); err != nil {
-		h.logger.Warn("failed to cache SKU", "error", err, "sku_id", sku.ID)
+	if data, err := json.Marshal(sku); err == nil {
+		if err := h.cache.Set(ctx, cacheKey, data, 5*time.Minute); err != nil {
+			h.logger.WithField("sku_id", sku.ID).WithError(err).Warn("failed to cache SKU")
+		}
 	}
 
 	return application.ToSKUDTO(sku), nil
@@ -125,7 +134,7 @@ func (h *SKUQueryHandler) HandleListSKUs(ctx context.Context, query *ListSKUsQue
 	// Get from repository
 	skus, total, err := h.repo.FindAll(ctx, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list SKUs")
+		return nil, errors.InternalWrap(err, "failed to list SKUs")
 	}
 
 	// Convert to DTOs
@@ -142,7 +151,7 @@ func (h *SKUQueryHandler) HandleListSKUsByProduct(ctx context.Context, query *Li
 	// Get from repository
 	skus, err := h.repo.FindByProductID(ctx, query.ProductID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list SKUs by product")
+		return nil, errors.InternalWrap(err, "failed to list SKUs by product")
 	}
 
 	// Convert to DTOs
@@ -156,5 +165,5 @@ func (h *SKUQueryHandler) HandleListSKUsByProduct(ctx context.Context, query *Li
 
 // skuCacheKey generates a cache key for a SKU
 func skuCacheKey(id int64) string {
-	return cache.Key("catalog", "sku", id)
+	return fmt.Sprintf("catalog:sku:%d", id)
 }

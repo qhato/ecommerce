@@ -22,6 +22,7 @@ type Product struct {
 	DefaultCategoryID       *int64
 	DefaultSKUID            *int64
 	Attributes              []ProductAttribute
+	Options                 []ProductOption
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 }
@@ -51,6 +52,7 @@ func NewProduct(
 		CreatedAt:             now,
 		UpdatedAt:             now,
 		Attributes:            make([]ProductAttribute, 0),
+		Options:               make([]ProductOption, 0),
 	}
 }
 

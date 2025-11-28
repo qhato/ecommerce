@@ -83,7 +83,7 @@ func NewProductCommandHandler(
 func (h *ProductCommandHandler) HandleCreateProduct(ctx context.Context, cmd *CreateProductCommand) (int64, error) {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return 0, errors.NewValidationError("invalid create product command", err)
+		return 0, errors.ValidationError("invalid create product command").WithInternal(err)
 	}
 
 	// Create product entity
@@ -113,17 +113,17 @@ func (h *ProductCommandHandler) HandleCreateProduct(ctx context.Context, cmd *Cr
 
 	// Save to repository
 	if err := h.repo.Create(ctx, product); err != nil {
-		h.logger.Error("failed to create product", "error", err)
-		return 0, errors.Wrap(err, "failed to create product")
+		h.logger.WithError(err).Error("failed to create product")
+		return 0, errors.InternalWrap(err, "failed to create product")
 	}
 
 	// Publish domain event
 	event := domain.NewProductCreatedEvent(product.ID, product.Model, product.Manufacture)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish product created event", "error", err)
+		h.logger.WithError(err).Error("failed to publish product created event")
 	}
 
-	h.logger.Info("product created", "product_id", product.ID)
+	h.logger.WithField("product_id", product.ID).Info("product created")
 	return product.ID, nil
 }
 
@@ -131,17 +131,17 @@ func (h *ProductCommandHandler) HandleCreateProduct(ctx context.Context, cmd *Cr
 func (h *ProductCommandHandler) HandleUpdateProduct(ctx context.Context, cmd *UpdateProductCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid update product command", err)
+		return errors.ValidationError("invalid update product command").WithInternal(err)
 	}
 
 	// Find existing product
 	product, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "product not found")
+		return errors.InternalWrap(err, "product not found")
 	}
 
 	if product.IsArchived() {
-		return errors.NewBusinessError("cannot update archived product")
+		return errors.Conflict("cannot update archived product")
 	}
 
 	// Track changes for event
@@ -183,19 +183,19 @@ func (h *ProductCommandHandler) HandleUpdateProduct(ctx context.Context, cmd *Up
 
 	// Save to repository
 	if err := h.repo.Update(ctx, product); err != nil {
-		h.logger.Error("failed to update product", "error", err, "product_id", cmd.ID)
-		return errors.Wrap(err, "failed to update product")
+		h.logger.WithField("product_id", cmd.ID).WithError(err).Error("failed to update product")
+		return errors.InternalWrap(err, "failed to update product")
 	}
 
 	// Publish domain event
 	if len(changes) > 0 {
 		event := domain.NewProductUpdatedEvent(product.ID, changes)
 		if err := h.eventBus.Publish(ctx, event); err != nil {
-			h.logger.Error("failed to publish product updated event", "error", err)
+			h.logger.WithError(err).Error("failed to publish product updated event")
 		}
 	}
 
-	h.logger.Info("product updated", "product_id", product.ID)
+	h.logger.WithField("product_id", product.ID).Info("product updated")
 	return nil
 }
 
@@ -203,28 +203,28 @@ func (h *ProductCommandHandler) HandleUpdateProduct(ctx context.Context, cmd *Up
 func (h *ProductCommandHandler) HandleDeleteProduct(ctx context.Context, cmd *DeleteProductCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid delete product command", err)
+		return errors.ValidationError("invalid delete product command").WithInternal(err)
 	}
 
 	// Check if product exists
 	product, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "product not found")
+		return errors.InternalWrap(err, "product not found")
 	}
 
 	// Soft delete (archive)
 	if err := h.repo.Delete(ctx, cmd.ID); err != nil {
-		h.logger.Error("failed to delete product", "error", err, "product_id", cmd.ID)
-		return errors.Wrap(err, "failed to delete product")
+		h.logger.WithField("product_id", cmd.ID).WithError(err).Error("failed to delete product")
+		return errors.InternalWrap(err, "failed to delete product")
 	}
 
 	// Publish domain event
 	event := domain.NewProductArchivedEvent(product.ID)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish product archived event", "error", err)
+		h.logger.WithError(err).Error("failed to publish product archived event")
 	}
 
-	h.logger.Info("product deleted (archived)", "product_id", cmd.ID)
+	h.logger.WithField("product_id", cmd.ID).Info("product deleted (archived)")
 	return nil
 }
 
@@ -232,17 +232,17 @@ func (h *ProductCommandHandler) HandleDeleteProduct(ctx context.Context, cmd *De
 func (h *ProductCommandHandler) HandleArchiveProduct(ctx context.Context, cmd *ArchiveProductCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid archive product command", err)
+		return errors.ValidationError("invalid archive product command").WithInternal(err)
 	}
 
 	// Find product
 	product, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "product not found")
+		return errors.InternalWrap(err, "product not found")
 	}
 
 	if product.IsArchived() {
-		return errors.NewBusinessError("product is already archived")
+		return errors.Conflict("product is already archived")
 	}
 
 	// Archive product
@@ -250,16 +250,16 @@ func (h *ProductCommandHandler) HandleArchiveProduct(ctx context.Context, cmd *A
 
 	// Save to repository
 	if err := h.repo.Update(ctx, product); err != nil {
-		h.logger.Error("failed to archive product", "error", err, "product_id", cmd.ID)
-		return errors.Wrap(err, "failed to archive product")
+		h.logger.WithField("product_id", cmd.ID).WithError(err).Error("failed to archive product")
+		return errors.InternalWrap(err, "failed to archive product")
 	}
 
 	// Publish domain event
 	event := domain.NewProductArchivedEvent(product.ID)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish product archived event", "error", err)
+		h.logger.WithError(err).Error("failed to publish product archived event")
 	}
 
-	h.logger.Info("product archived", "product_id", cmd.ID)
+	h.logger.WithField("product_id", cmd.ID).Info("product archived")
 	return nil
 }

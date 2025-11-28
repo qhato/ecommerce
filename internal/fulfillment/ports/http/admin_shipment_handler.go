@@ -9,6 +9,7 @@ import (
 	"github.com/qhato/ecommerce/internal/fulfillment/application"
 	"github.com/qhato/ecommerce/internal/fulfillment/application/commands"
 	"github.com/qhato/ecommerce/internal/fulfillment/domain"
+	"github.com/qhato/ecommerce/pkg/errors"
 	httpPkg "github.com/qhato/ecommerce/pkg/http"
 	"github.com/qhato/ecommerce/pkg/logger"
 	"github.com/qhato/ecommerce/pkg/validator"
@@ -56,12 +57,12 @@ func (h *AdminShipmentHandler) RegisterRoutes(r chi.Router) {
 func (h *AdminShipmentHandler) CreateShipment(w http.ResponseWriter, r *http.Request) {
 	var req application.CreateShipmentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.BadRequest("validation failed").WithInternal(err))
 		return
 	}
 
@@ -86,7 +87,7 @@ func (h *AdminShipmentHandler) CreateShipment(w http.ResponseWriter, r *http.Req
 		address,
 	)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to create shipment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to create shipment"))
 		return
 	}
 
@@ -98,17 +99,17 @@ func (h *AdminShipmentHandler) GetShipment(w http.ResponseWriter, r *http.Reques
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid shipment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid shipment ID").WithInternal(err))
 		return
 	}
 
 	shipment, err := h.repo.FindByID(r.Context(), id)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to get shipment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to get shipment"))
 		return
 	}
 	if shipment == nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "shipment not found", nil)
+		httpPkg.RespondError(w, errors.NotFound("shipment not found"))
 		return
 	}
 
@@ -121,11 +122,11 @@ func (h *AdminShipmentHandler) GetShipmentByTracking(w http.ResponseWriter, r *h
 
 	shipment, err := h.repo.FindByTrackingNumber(r.Context(), trackingNumber)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to get shipment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to get shipment"))
 		return
 	}
 	if shipment == nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "shipment not found", nil)
+		httpPkg.RespondError(w, errors.NotFound("shipment not found"))
 		return
 	}
 
@@ -137,13 +138,13 @@ func (h *AdminShipmentHandler) GetShipmentsByOrder(w http.ResponseWriter, r *htt
 	orderIDStr := chi.URLParam(r, "orderId")
 	orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID").WithInternal(err))
 		return
 	}
 
 	shipments, err := h.repo.FindByOrderID(r.Context(), orderID)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to list shipments", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to list shipments"))
 		return
 	}
 
@@ -185,7 +186,7 @@ func (h *AdminShipmentHandler) ListShipments(w http.ResponseWriter, r *http.Requ
 
 	shipments, total, err := h.repo.FindAll(r.Context(), filter)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to list shipments", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to list shipments"))
 		return
 	}
 
@@ -210,24 +211,24 @@ func (h *AdminShipmentHandler) ShipShipment(w http.ResponseWriter, r *http.Reque
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid shipment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid shipment ID").WithInternal(err))
 		return
 	}
 
 	var req application.ShipRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.BadRequest("validation failed").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.ShipShipment(r.Context(), id, req.TrackingNumber)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to ship shipment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to ship shipment"))
 		return
 	}
 
@@ -239,13 +240,13 @@ func (h *AdminShipmentHandler) DeliverShipment(w http.ResponseWriter, r *http.Re
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid shipment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid shipment ID").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.DeliverShipment(r.Context(), id)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to deliver shipment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to deliver shipment"))
 		return
 	}
 
@@ -257,13 +258,13 @@ func (h *AdminShipmentHandler) CancelShipment(w http.ResponseWriter, r *http.Req
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid shipment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid shipment ID").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.CancelShipment(r.Context(), id)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to cancel shipment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to cancel shipment"))
 		return
 	}
 
@@ -275,19 +276,19 @@ func (h *AdminShipmentHandler) UpdateTracking(w http.ResponseWriter, r *http.Req
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid shipment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid shipment ID").WithInternal(err))
 		return
 	}
 
 	var req application.UpdateTrackingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.UpdateTracking(r.Context(), id, req.TrackingNumber, req.Notes)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to update tracking", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to update tracking"))
 		return
 	}
 

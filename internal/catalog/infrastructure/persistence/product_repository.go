@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/qhato/ecommerce/internal/catalog/domain"
 	"github.com/qhato/ecommerce/pkg/database"
 	"github.com/qhato/ecommerce/pkg/errors"
@@ -37,7 +39,7 @@ func (r *PostgresProductRepository) Create(ctx context.Context, product *domain.
 		archivedFlag = "Y"
 	}
 
-	err := r.db.QueryRowContext(ctx, query,
+	err := r.db.QueryRow(ctx, query,
 		archivedFlag,
 		product.CanSellWithoutOptions,
 		product.CanonicalURL,
@@ -55,7 +57,7 @@ func (r *PostgresProductRepository) Create(ctx context.Context, product *domain.
 	).Scan(&product.ID)
 
 	if err != nil {
-		return errors.Wrap(err, "failed to create product")
+		return errors.InternalWrap(err, "failed to create product")
 	}
 
 	// Insert attributes
@@ -93,7 +95,7 @@ func (r *PostgresProductRepository) Update(ctx context.Context, product *domain.
 		archivedFlag = "Y"
 	}
 
-	result, err := r.db.ExecContext(ctx, query,
+	err := r.db.Exec(ctx, query,
 		archivedFlag,
 		product.CanSellWithoutOptions,
 		product.CanonicalURL,
@@ -112,16 +114,29 @@ func (r *PostgresProductRepository) Update(ctx context.Context, product *domain.
 	)
 
 	if err != nil {
-		return errors.Wrap(err, "failed to update product")
-	}
-
-	rowsAffected, err := result.RowsAffected()
+	tag, err := r.db.Pool().Exec(ctx, query,
+		archivedFlag,
+		product.CanSellWithoutOptions,
+		product.CanonicalURL,
+		product.DisplayTemplate,
+		product.EnableDefaultSKU,
+		product.Manufacture,
+		product.MetaDescription,
+		product.MetaTitle,
+		product.Model,
+		product.OverrideGeneratedURL,
+		product.URL,
+		product.URLKey,
+		product.DefaultCategoryID,
+		product.DefaultSKUID,
+		product.ID,
+	)
 	if err != nil {
-		return errors.Wrap(err, "failed to get rows affected")
+		return errors.InternalWrap(err, "failed to update product")
 	}
 
-	if rowsAffected == 0 {
-		return errors.NewNotFoundError("product not found")
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound("product not found")
 	}
 
 	// Update attributes (delete and re-insert)
@@ -142,18 +157,13 @@ func (r *PostgresProductRepository) Update(ctx context.Context, product *domain.
 func (r *PostgresProductRepository) Delete(ctx context.Context, id int64) error {
 	query := `UPDATE blc_product SET archived = 'Y' WHERE product_id = $1`
 
-	result, err := r.db.ExecContext(ctx, query, id)
+	tag, err := r.db.Pool().Exec(ctx, query, id)
 	if err != nil {
-		return errors.Wrap(err, "failed to delete product")
+		return errors.InternalWrap(err, "failed to delete product")
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return errors.Wrap(err, "failed to get rows affected")
-	}
-
-	if rowsAffected == 0 {
-		return errors.NewNotFoundError("product not found")
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound("product not found")
 	}
 
 	return nil
@@ -174,7 +184,7 @@ func (r *PostgresProductRepository) FindByID(ctx context.Context, id int64) (*do
 	var archivedFlag string
 	var defaultCategoryID, defaultSKUID sql.NullInt64
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRow(ctx, query, id).Scan(
 		&product.ID,
 		&archivedFlag,
 		&product.CanSellWithoutOptions,
@@ -192,11 +202,11 @@ func (r *PostgresProductRepository) FindByID(ctx context.Context, id int64) (*do
 		&defaultSKUID,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, errors.NewNotFoundError("product not found")
+	if err == pgx.ErrNoRows {
+		return nil, errors.NotFound("product not found")
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to find product")
+		return nil, errors.InternalWrap(err, "failed to find product")
 	}
 
 	product.Archived = archivedFlag == "Y"
@@ -226,12 +236,12 @@ func (r *PostgresProductRepository) FindByURL(ctx context.Context, url string) (
 		LIMIT 1`
 
 	var id int64
-	err := r.db.QueryRowContext(ctx, query, url).Scan(&id)
-	if err == sql.ErrNoRows {
-		return nil, errors.NewNotFoundError("product not found")
+	err := r.db.QueryRow(ctx, query, url).Scan(&id)
+	if err == pgx.ErrNoRows {
+		return nil, errors.NotFound("product not found")
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to find product by URL")
+		return nil, errors.InternalWrap(err, "failed to find product by URL")
 	}
 
 	return r.FindByID(ctx, id)
@@ -246,12 +256,12 @@ func (r *PostgresProductRepository) FindByURLKey(ctx context.Context, urlKey str
 		LIMIT 1`
 
 	var id int64
-	err := r.db.QueryRowContext(ctx, query, urlKey).Scan(&id)
-	if err == sql.ErrNoRows {
-		return nil, errors.NewNotFoundError("product not found")
+	err := r.db.QueryRow(ctx, query, urlKey).Scan(&id)
+	if err == pgx.ErrNoRows {
+		return nil, errors.NotFound("product not found")
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to find product by URL key")
+		return nil, errors.InternalWrap(err, "failed to find product by URL key")
 	}
 
 	return r.FindByID(ctx, id)
@@ -268,8 +278,8 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter *domain.
 	// Count total
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM blc_product %s", whereClause)
 	var total int64
-	if err := r.db.QueryRowContext(ctx, countQuery).Scan(&total); err != nil {
-		return nil, 0, errors.Wrap(err, "failed to count products")
+	if err := r.db.QueryRow(ctx, countQuery).Scan(&total); err != nil {
+		return nil, 0, errors.InternalWrap(err, "failed to count products")
 	}
 
 	// Build main query with pagination
@@ -286,9 +296,9 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter *domain.
 		orderByClause,
 	)
 
-	rows, err := r.db.QueryContext(ctx, query, filter.PageSize, offset)
+	rows, err := r.db.Query(ctx, query, filter.PageSize, offset)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "failed to list products")
+		return nil, 0, errors.InternalWrap(err, "failed to list products")
 	}
 	defer rows.Close()
 
@@ -325,8 +335,8 @@ func (r *PostgresProductRepository) FindByCategoryID(ctx context.Context, catego
 		%s`, whereClause)
 
 	var total int64
-	if err := r.db.QueryRowContext(ctx, countQuery, categoryID).Scan(&total); err != nil {
-		return nil, 0, errors.Wrap(err, "failed to count products by category")
+	if err := r.db.QueryRow(ctx, countQuery, categoryID).Scan(&total); err != nil {
+		return nil, 0, errors.InternalWrap(err, "failed to count products by category")
 	}
 
 	// Build main query
@@ -344,9 +354,9 @@ func (r *PostgresProductRepository) FindByCategoryID(ctx context.Context, catego
 		orderByClause,
 	)
 
-	rows, err := r.db.QueryContext(ctx, query, categoryID, filter.PageSize, offset)
+	rows, err := r.db.Query(ctx, query, categoryID, filter.PageSize, offset)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "failed to list products by category")
+		return nil, 0, errors.InternalWrap(err, "failed to list products by category")
 	}
 	defer rows.Close()
 
@@ -385,8 +395,8 @@ func (r *PostgresProductRepository) Search(ctx context.Context, query string, fi
 	// Count total
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM blc_product %s", whereClause)
 	var total int64
-	if err := r.db.QueryRowContext(ctx, countQuery).Scan(&total); err != nil {
-		return nil, 0, errors.Wrap(err, "failed to count search results")
+	if err := r.db.QueryRow(ctx, countQuery).Scan(&total); err != nil {
+		return nil, 0, errors.InternalWrap(err, "failed to count search results")
 	}
 
 	// Build main query
@@ -403,9 +413,9 @@ func (r *PostgresProductRepository) Search(ctx context.Context, query string, fi
 		orderByClause,
 	)
 
-	rows, err := r.db.QueryContext(ctx, searchQuery, filter.PageSize, offset)
+	rows, err := r.db.Query(ctx, searchQuery, filter.PageSize, offset)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "failed to search products")
+		return nil, 0, errors.InternalWrap(err, "failed to search products")
 	}
 	defer rows.Close()
 
@@ -433,9 +443,9 @@ func (r *PostgresProductRepository) AddToCategory(ctx context.Context, productID
 		VALUES (nextval('blc_category_product_xref_seq'), $1, $2)
 		ON CONFLICT DO NOTHING`
 
-	_, err := r.db.ExecContext(ctx, query, productID, categoryID)
+	err := r.db.Exec(ctx, query, productID, categoryID)
 	if err != nil {
-		return errors.Wrap(err, "failed to add product to category")
+		return errors.InternalWrap(err, "failed to add product to category")
 	}
 
 	return nil
@@ -447,9 +457,9 @@ func (r *PostgresProductRepository) RemoveFromCategory(ctx context.Context, prod
 		DELETE FROM blc_category_product_xref
 		WHERE product_id = $1 AND category_id = $2`
 
-	_, err := r.db.ExecContext(ctx, query, productID, categoryID)
+	err := r.db.Exec(ctx, query, productID, categoryID)
 	if err != nil {
-		return errors.Wrap(err, "failed to remove product from category")
+		return errors.InternalWrap(err, "failed to remove product from category")
 	}
 
 	return nil
@@ -463,9 +473,9 @@ func (r *PostgresProductRepository) insertAttributes(ctx context.Context, produc
 		VALUES (nextval('blc_product_attribute_seq'), $1, $2, $3)`
 
 	for _, attr := range attributes {
-		_, err := r.db.ExecContext(ctx, query, attr.Name, attr.Value, productID)
+		err := r.db.Exec(ctx, query, attr.Name, attr.Value, productID)
 		if err != nil {
-			return errors.Wrap(err, "failed to insert product attribute")
+			return errors.InternalWrap(err, "failed to insert product attribute")
 		}
 	}
 
@@ -474,9 +484,9 @@ func (r *PostgresProductRepository) insertAttributes(ctx context.Context, produc
 
 func (r *PostgresProductRepository) deleteAttributes(ctx context.Context, productID int64) error {
 	query := `DELETE FROM blc_product_attribute WHERE product_id = $1`
-	_, err := r.db.ExecContext(ctx, query, productID)
+	err := r.db.Exec(ctx, query, productID)
 	if err != nil {
-		return errors.Wrap(err, "failed to delete product attributes")
+		return errors.InternalWrap(err, "failed to delete product attributes")
 	}
 	return nil
 }
@@ -487,9 +497,9 @@ func (r *PostgresProductRepository) findAttributes(ctx context.Context, productI
 		FROM blc_product_attribute
 		WHERE product_id = $1`
 
-	rows, err := r.db.QueryContext(ctx, query, productID)
+	rows, err := r.db.Query(ctx, query, productID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to find product attributes")
+		return nil, errors.InternalWrap(err, "failed to find product attributes")
 	}
 	defer rows.Close()
 
@@ -497,7 +507,7 @@ func (r *PostgresProductRepository) findAttributes(ctx context.Context, productI
 	for rows.Next() {
 		var attr domain.ProductAttribute
 		if err := rows.Scan(&attr.ID, &attr.Name, &attr.Value, &attr.ProductID); err != nil {
-			return nil, errors.Wrap(err, "failed to scan product attribute")
+			return nil, errors.InternalWrap(err, "failed to scan product attribute")
 		}
 		attributes = append(attributes, attr)
 	}

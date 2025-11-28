@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/qhato/ecommerce/internal/order/domain"
-	"github.com/qhato/ecommerce/pkg/apperrors"
 	"github.com/qhato/ecommerce/pkg/cache"
+	"github.com/qhato/ecommerce/pkg/errors"
 	"github.com/qhato/ecommerce/pkg/logger"
 )
 
@@ -49,7 +49,7 @@ func (h *OrderQueryHandler) GetByID(ctx context.Context, id int64) (*domain.Orde
 		return nil, err
 	}
 	if order == nil {
-		return nil, apperrors.NewNotFoundError("order", id)
+		return nil, errors.NotFound(fmt.Sprintf("order %d", id))
 	}
 
 	// Cache result
@@ -81,7 +81,7 @@ func (h *OrderQueryHandler) GetByOrderNumber(ctx context.Context, orderNumber st
 		return nil, err
 	}
 	if order == nil {
-		return nil, apperrors.NewNotFoundError("order with number", orderNumber)
+		return nil, errors.NotFound(fmt.Sprintf("order with number %s", orderNumber))
 	}
 
 	// Cache result

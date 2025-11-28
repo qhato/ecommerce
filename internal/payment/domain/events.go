@@ -27,7 +27,7 @@ type PaymentCreatedEvent struct {
 
 func NewPaymentCreatedEvent(paymentID, orderID, customerID int64, paymentMethod PaymentMethod, amount float64, currencyCode string) *PaymentCreatedEvent {
 	return &PaymentCreatedEvent{
-		BaseEvent:     event.BaseEvent{EventType: EventPaymentCreated, Timestamp: time.Now()},
+		BaseEvent:     event.BaseEvent{Type: EventPaymentCreated, OccurredOn: time.Now()},
 		PaymentID:     paymentID,
 		OrderID:       orderID,
 		CustomerID:    customerID,
@@ -37,9 +37,7 @@ func NewPaymentCreatedEvent(paymentID, orderID, customerID int64, paymentMethod 
 	}
 }
 
-func (e *PaymentCreatedEvent) Type() string {
-	return e.EventType
-}
+
 
 type PaymentAuthorizedEvent struct {
 	event.BaseEvent
@@ -50,9 +48,7 @@ type PaymentAuthorizedEvent struct {
 	Amount            float64 `json:"amount"`
 }
 
-func (e *PaymentAuthorizedEvent) Type() string {
-	return e.EventType
-}
+
 
 type PaymentCapturedEvent struct {
 	event.BaseEvent
@@ -62,9 +58,7 @@ type PaymentCapturedEvent struct {
 	Amount        float64 `json:"amount"`
 }
 
-func (e *PaymentCapturedEvent) Type() string {
-	return e.EventType
-}
+
 
 type PaymentCompletedEvent struct {
 	event.BaseEvent
@@ -74,9 +68,7 @@ type PaymentCompletedEvent struct {
 	Amount        float64 `json:"amount"`
 }
 
-func (e *PaymentCompletedEvent) Type() string {
-	return e.EventType
-}
+
 
 type PaymentFailedEvent struct {
 	event.BaseEvent
@@ -86,9 +78,7 @@ type PaymentFailedEvent struct {
 	Amount        float64 `json:"amount"`
 }
 
-func (e *PaymentFailedEvent) Type() string {
-	return e.EventType
-}
+
 
 type PaymentRefundedEvent struct {
 	event.BaseEvent
@@ -98,6 +88,4 @@ type PaymentRefundedEvent struct {
 	TotalRefunded float64 `json:"total_refunded"`
 }
 
-func (e *PaymentRefundedEvent) Type() string {
-	return e.EventType
-}
+

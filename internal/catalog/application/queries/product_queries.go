@@ -2,6 +2,9 @@ package queries
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/application"
 	"github.com/qhato/ecommerce/internal/catalog/domain"
@@ -75,20 +78,24 @@ func (h *ProductQueryHandler) HandleGetProductByID(ctx context.Context, query *G
 	cacheKey := productCacheKey(query.ID)
 	var product *domain.Product
 
-	if err := h.cache.Get(ctx, cacheKey, &product); err == nil && product != nil {
-		h.logger.Debug("product found in cache", "product_id", query.ID)
-		return application.ToProductDTO(product), nil
+	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && len(cached) > 0 {
+		if err := json.Unmarshal(cached, &product); err == nil {
+			h.logger.WithField("product_id", query.ID).Debug("product found in cache")
+			return application.ToProductDTO(product), nil
+		}
 	}
 
 	// Get from repository
 	product, err := h.repo.FindByID(ctx, query.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "product not found")
+		return nil, errors.InternalWrap(err, "product not found")
 	}
 
 	// Cache the result
-	if err := h.cache.Set(ctx, cacheKey, product, cache.DefaultTTL); err != nil {
-		h.logger.Warn("failed to cache product", "error", err, "product_id", query.ID)
+	if data, err := json.Marshal(product); err == nil {
+		if err := h.cache.Set(ctx, cacheKey, data, 5*time.Minute); err != nil {
+			h.logger.WithField("product_id", query.ID).WithError(err).Warn("failed to cache product")
+		}
 	}
 
 	return application.ToProductDTO(product), nil
@@ -98,13 +105,15 @@ func (h *ProductQueryHandler) HandleGetProductByID(ctx context.Context, query *G
 func (h *ProductQueryHandler) HandleGetProductByURL(ctx context.Context, query *GetProductByURLQuery) (*application.ProductDTO, error) {
 	product, err := h.repo.FindByURL(ctx, query.URL)
 	if err != nil {
-		return nil, errors.Wrap(err, "product not found")
+		return nil, errors.InternalWrap(err, "product not found")
 	}
 
 	// Cache the result
 	cacheKey := productCacheKey(product.ID)
-	if err := h.cache.Set(ctx, cacheKey, product, cache.DefaultTTL); err != nil {
-		h.logger.Warn("failed to cache product", "error", err, "product_id", product.ID)
+	if data, err := json.Marshal(product); err == nil {
+		if err := h.cache.Set(ctx, cacheKey, data, 5*time.Minute); err != nil {
+			h.logger.WithField("product_id", product.ID).WithError(err).Warn("failed to cache product")
+		}
 	}
 
 	return application.ToProductDTO(product), nil
@@ -138,7 +147,7 @@ func (h *ProductQueryHandler) HandleListProducts(ctx context.Context, query *Lis
 	// Get from repository
 	products, total, err := h.repo.FindAll(ctx, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list products")
+		return nil, errors.InternalWrap(err, "failed to list products")
 	}
 
 	// Convert to DTOs
@@ -178,7 +187,7 @@ func (h *ProductQueryHandler) HandleListProductsByCategory(ctx context.Context, 
 	// Get from repository
 	products, total, err := h.repo.FindByCategoryID(ctx, query.CategoryID, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list products by category")
+		return nil, errors.InternalWrap(err, "failed to list products by category")
 	}
 
 	// Convert to DTOs
@@ -218,7 +227,7 @@ func (h *ProductQueryHandler) HandleSearchProducts(ctx context.Context, query *S
 	// Search from repository
 	products, total, err := h.repo.Search(ctx, query.Query, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to search products")
+		return nil, errors.InternalWrap(err, "failed to search products")
 	}
 
 	// Convert to DTOs
@@ -231,6 +240,4 @@ func (h *ProductQueryHandler) HandleSearchProducts(ctx context.Context, query *S
 }
 
 // productCacheKey generates a cache key for a product
-func productCacheKey(id int64) string {
-	return cache.Key("catalog", "product", id)
-}
+	return fmt.Sprintf("catalog:product:%d", id)
