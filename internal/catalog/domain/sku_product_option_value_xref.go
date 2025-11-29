@@ -4,11 +4,11 @@ import "time"
 
 // SkuProductOptionValueXref represents the cross-reference between a SKU and a ProductOptionValue
 type SkuProductOptionValueXref struct {
-	ID                  int64
-	SKUID               int64
+	ID                   int64
+	SKUID                int64
 	ProductOptionValueID int64
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 // NewSkuProductOptionValueXref creates a new SkuProductOptionValueXref
@@ -22,9 +22,9 @@ func NewSkuProductOptionValueXref(skuID, productOptionValueID int64) (*SkuProduc
 
 	now := time.Now()
 	return &SkuProductOptionValueXref{
-		SKUID:               skuID,
+		SKUID:                skuID,
 		ProductOptionValueID: productOptionValueID,
-		CreatedAt:           now,
-		UpdatedAt:           now,
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	}, nil
 }

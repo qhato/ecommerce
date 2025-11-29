@@ -42,32 +42,6 @@ type CategoryService interface {
 }
 
 // CategoryDTO represents a category data transfer object.
-type CategoryDTO struct {
-	ID                       int64
-	Name                     string
-	Description              string
-	LongDescription          string
-	ActiveStartDate          *time.Time
-	ActiveEndDate            *time.Time
-	Archived                 bool
-	DisplayTemplate          string
-	ExternalID               string
-	FulfillmentType          string
-	InventoryType            string
-	MetaDescription          string
-	MetaTitle                string
-	OverrideGeneratedURL     bool
-	ProductDescPattern       string
-	ProductTitlePattern      string
-	RootDisplayOrder         float64
-	TaxCode                  string
-	URL                      string
-	URLKey                   string
-	DefaultParentCategoryID  *int64
-	CreatedAt                time.Time
-	UpdatedAt                time.Time
-}
-
 // CategoryAttributeDTO represents a category attribute data transfer object.
 type CategoryAttributeDTO struct {
 	ID         int64
@@ -78,24 +52,24 @@ type CategoryAttributeDTO struct {
 
 // CreateCategoryCommand is a command to create a new category.
 type CreateCategoryCommand struct {
-	Name                string
-	Description         string
-	LongDescription     string
-	URL                 string
-	URLKey              string
-	ActiveStartDate     *time.Time
-	ActiveEndDate       *time.Time
-	MetaTitle           string
-	MetaDescription     string
-	DisplayTemplate     string
-	ExternalID          string
-	FulfillmentType     string
-	InventoryType       string
+	Name                 string
+	Description          string
+	LongDescription      string
+	URL                  string
+	URLKey               string
+	ActiveStartDate      *time.Time
+	ActiveEndDate        *time.Time
+	MetaTitle            string
+	MetaDescription      string
+	DisplayTemplate      string
+	ExternalID           string
+	FulfillmentType      string
+	InventoryType        string
 	OverrideGeneratedURL bool
-	ProductDescPattern  string
-	ProductTitlePattern string
-	RootDisplayOrder    float64
-	TaxCode             string
+	ProductDescPattern   string
+	ProductTitlePattern  string
+	RootDisplayOrder     float64
+	TaxCode              string
 }
 
 // UpdateCategoryCommand is a command to update an existing category.
@@ -122,7 +96,7 @@ type UpdateCategoryCommand struct {
 }
 
 type categoryService struct {
-	categoryRepo        domain.CategoryRepository
+	categoryRepo          domain.CategoryRepository
 	categoryAttributeRepo domain.CategoryAttributeRepository
 }
 
@@ -132,7 +106,7 @@ func NewCategoryService(
 	categoryAttributeRepo domain.CategoryAttributeRepository,
 ) CategoryService {
 	return &categoryService{
-		categoryRepo:        categoryRepo,
+		categoryRepo:          categoryRepo,
 		categoryAttributeRepo: categoryAttributeRepo,
 	}
 }
@@ -362,29 +336,29 @@ func (s *categoryService) RemoveCategoryAttribute(ctx context.Context, categoryA
 
 func toCategoryDTO(category *domain.Category) *CategoryDTO {
 	return &CategoryDTO{
-		ID:                       category.ID,
-		Name:                     category.Name,
-		Description:              category.Description,
-		LongDescription:          category.LongDescription,
-		ActiveStartDate:          category.ActiveStartDate,
-		ActiveEndDate:            category.ActiveEndDate,
-		Archived:                 category.Archived,
-		DisplayTemplate:          category.DisplayTemplate,
-		ExternalID:               category.ExternalID,
-		FulfillmentType:          category.FulfillmentType,
-		InventoryType:            category.InventoryType,
-		MetaDescription:          category.MetaDescription,
-		MetaTitle:                category.MetaTitle,
-		OverrideGeneratedURL:     category.OverrideGeneratedURL,
-		ProductDescPattern:       category.ProductDescPattern,
-		ProductTitlePattern:      category.ProductTitlePattern,
-		RootDisplayOrder:         category.RootDisplayOrder,
-		TaxCode:                  category.TaxCode,
-		URL:                      category.URL,
-		URLKey:                   category.URLKey,
-		DefaultParentCategoryID:  category.DefaultParentCategoryID,
-		CreatedAt:                category.CreatedAt,
-		UpdatedAt:                category.UpdatedAt,
+		ID:                      category.ID,
+		Name:                    category.Name,
+		Description:             category.Description,
+		LongDescription:         category.LongDescription,
+		ActiveStartDate:         category.ActiveStartDate,
+		ActiveEndDate:           category.ActiveEndDate,
+		Archived:                category.Archived,
+		DisplayTemplate:         category.DisplayTemplate,
+		ExternalID:              category.ExternalID,
+		FulfillmentType:         category.FulfillmentType,
+		InventoryType:           category.InventoryType,
+		MetaDescription:         category.MetaDescription,
+		MetaTitle:               category.MetaTitle,
+		OverrideGeneratedURL:    category.OverrideGeneratedURL,
+		ProductDescPattern:      category.ProductDescPattern,
+		ProductTitlePattern:     category.ProductTitlePattern,
+		RootDisplayOrder:        category.RootDisplayOrder,
+		TaxCode:                 category.TaxCode,
+		URL:                     category.URL,
+		URLKey:                  category.URLKey,
+		DefaultParentCategoryID: category.DefaultParentCategoryID,
+		CreatedAt:               category.CreatedAt,
+		UpdatedAt:               category.UpdatedAt,
 	}
 }
 

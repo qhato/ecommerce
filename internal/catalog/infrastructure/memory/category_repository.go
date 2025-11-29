@@ -10,9 +10,9 @@ import (
 
 // CategoryRepository implements domain.CategoryRepository for in-memory persistence.
 type CategoryRepository struct {
-	mu        sync.RWMutex
+	mu         sync.RWMutex
 	categories map[int64]*domain.Category
-	nextID    int64
+	nextID     int64
 }
 
 // NewCategoryRepository creates a new in-memory category repository.

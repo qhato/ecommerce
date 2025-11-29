@@ -43,40 +43,40 @@ type SkuService interface {
 
 // SkuDTO represents a SKU data transfer object.
 type SkuDTO struct {
-	ID                      int64
-	Name                    string
-	Description             string
-	LongDescription         string
-	ActiveStartDate         *time.Time
-	ActiveEndDate           *time.Time
-	Available               bool
-	Cost                    float64
-	RetailPrice             float64
-	SalePrice               float64
-	Taxable                 bool
-	TaxCode                 string
-	UPC                     string
-	URLKey                  string
-	Weight                  float64
-	WeightUnitOfMeasure     string
-	CurrencyCode            string
-	DefaultProductID        *int64
-	AdditionalProductID     *int64
-	ContainerShape          string
-	Depth                   float64
-	DimensionUnitOfMeasure  string
-	Girth                   float64
-	Height                  float64
-	ContainerSize           string
-	Width                   float64
-	Discountable            bool
-	DisplayTemplate         string
-	ExternalID              string
-	FulfillmentType         string
-	InventoryType           string
-	IsMachineSortable       bool
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	ID                     int64
+	Name                   string
+	Description            string
+	LongDescription        string
+	ActiveStartDate        *time.Time
+	ActiveEndDate          *time.Time
+	Available              bool
+	Cost                   float64
+	RetailPrice            float64
+	SalePrice              float64
+	Taxable                bool
+	TaxCode                string
+	UPC                    string
+	URLKey                 string
+	Weight                 float64
+	WeightUnitOfMeasure    string
+	CurrencyCode           string
+	DefaultProductID       *int64
+	AdditionalProductID    *int64
+	ContainerShape         string
+	Depth                  float64
+	DimensionUnitOfMeasure string
+	Girth                  float64
+	Height                 float64
+	ContainerSize          string
+	Width                  float64
+	Discountable           bool
+	DisplayTemplate        string
+	ExternalID             string
+	FulfillmentType        string
+	InventoryType          string
+	IsMachineSortable      bool
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 // SkuAttributeDTO represents a SKU attribute data transfer object.
@@ -89,85 +89,85 @@ type SkuAttributeDTO struct {
 
 // SkuProductOptionValueXrefDTO represents a SKU product option value cross-reference data transfer object.
 type SkuProductOptionValueXrefDTO struct {
-	ID                  int64
-	SKUID               int64
+	ID                   int64
+	SKUID                int64
 	ProductOptionValueID int64
 }
 
 // CreateSkuCommand is a command to create a new SKU.
 type CreateSkuCommand struct {
-	Name                    string
-	Description             string
-	LongDescription         string
-	UPC                     string
-	CurrencyCode            string
-	Cost                    float64
-	RetailPrice             float64
-	SalePrice               float64
-	Taxable                 bool
-	TaxCode                 string
-	Available               bool
-	ActiveStartDate         *time.Time
-	ActiveEndDate           *time.Time
-	DefaultProductID        *int64
-	AdditionalProductID     *int64
-	ContainerShape          string
-	Depth                   float64
-	DimensionUnitOfMeasure  string
-	Girth                   float64
-	Height                  float64
-	ContainerSize           string
-	Width                   float64
-	Discountable            bool
-	DisplayTemplate         string
-	ExternalID              string
-	FulfillmentType         string
-	InventoryType           string
-	IsMachineSortable       bool
-	URLKey                  string
-	Weight                  float64
-	WeightUnitOfMeasure     string
+	Name                   string
+	Description            string
+	LongDescription        string
+	UPC                    string
+	CurrencyCode           string
+	Cost                   float64
+	RetailPrice            float64
+	SalePrice              float64
+	Taxable                bool
+	TaxCode                string
+	Available              bool
+	ActiveStartDate        *time.Time
+	ActiveEndDate          *time.Time
+	DefaultProductID       *int64
+	AdditionalProductID    *int64
+	ContainerShape         string
+	Depth                  float64
+	DimensionUnitOfMeasure string
+	Girth                  float64
+	Height                 float64
+	ContainerSize          string
+	Width                  float64
+	Discountable           bool
+	DisplayTemplate        string
+	ExternalID             string
+	FulfillmentType        string
+	InventoryType          string
+	IsMachineSortable      bool
+	URLKey                 string
+	Weight                 float64
+	WeightUnitOfMeasure    string
 }
 
 // UpdateSkuCommand is a command to update an existing SKU.
 type UpdateSkuCommand struct {
-	ID                      int64
-	Name                    *string
-	Description             *string
-	LongDescription         *string
-	UPC                     *string
-	CurrencyCode            *string
-	Cost                    *float64
-	RetailPrice             *float64
-	SalePrice               *float64
-	Taxable                 *bool
-	TaxCode                 *string
-	Available               *bool
-	ActiveStartDate         *time.Time
-	ActiveEndDate           *time.Time
-	DefaultProductID        *int64
-	AdditionalProductID     *int64
-	ContainerShape          *string
-	Depth                   *float64
-	DimensionUnitOfMeasure  *string
-	Girth                   *float64
-	Height                  *float64
-	ContainerSize           *string
-	Width                   *float64
-	Discountable            *bool
-	DisplayTemplate         *string
-	ExternalID              *string
-	FulfillmentType         *string
-	InventoryType           *string
-	IsMachineSortable       *bool
-	URLKey                  *string
-	Weight                  *float64
-	WeightUnitOfMeasure     *string
+	ID                     int64
+	Name                   *string
+	Description            *string
+	LongDescription        *string
+	UPC                    *string
+	CurrencyCode           *string
+	Cost                   *float64
+	RetailPrice            *float64
+	SalePrice              *float64
+	Taxable                *bool
+	TaxCode                *string
+	Available              *bool
+	ActiveStartDate        *time.Time
+	ActiveEndDate          *time.Time
+	DefaultProductID       *int64
+	AdditionalProductID    *int64
+	ContainerShape         *string
+	Depth                  *float64
+	DimensionUnitOfMeasure *string
+	Girth                  *float64
+	Height                 *float64
+	ContainerSize          *string
+	Width                  *float64
+	Discountable           *bool
+	DisplayTemplate        *string
+	ExternalID             *string
+	FulfillmentType        *string
+	InventoryType          *string
+	IsMachineSortable      *bool
+	URLKey                 *string
+	Weight                 *float64
+	WeightUnitOfMeasure    *string
 }
 
 type skuService struct {
-	skuRepo                     domain.SKURepository
-	skuAttributeRepo            domain.SKUAttributeRepository
+	skuRepo                       domain.SKURepository
+	skuAttributeRepo              domain.SKUAttributeRepository
 	skuProductOptionValueXrefRepo domain.SkuProductOptionValueXrefRepository
 }
 
@@ -178,8 +178,8 @@ func NewSkuService(
 	skuProductOptionValueXrefRepo domain.SkuProductOptionValueXrefRepository,
 ) SkuService {
 	return &skuService{
-		skuRepo:                     skuRepo,
-		skuAttributeRepo:            skuAttributeRepo,
+		skuRepo:                       skuRepo,
+		skuAttributeRepo:              skuAttributeRepo,
 		skuProductOptionValueXrefRepo: skuProductOptionValueXrefRepo,
 	}
 }
@@ -436,40 +436,40 @@ func (s *skuService) RemoveSkuProductOptionValue(ctx context.Context, skuID, pro
 
 func toSkuDTO(sku *domain.SKU) *SkuDTO {
 	return &SkuDTO{
-		ID:                      sku.ID,
-		Name:                    sku.Name,
-		Description:             sku.Description,
-		LongDescription:         sku.LongDescription,
-		ActiveStartDate:         sku.ActiveStartDate,
-		ActiveEndDate:           sku.ActiveEndDate,
-		Available:               sku.Available,
-		Cost:                    sku.Cost,
-		RetailPrice:             sku.RetailPrice,
-		SalePrice:               sku.SalePrice,
-		Taxable:                 sku.Taxable,
-		TaxCode:                 sku.TaxCode,
-		UPC:                     sku.UPC,
-		URLKey:                  sku.URLKey,
-		Weight:                  sku.Weight,
-		WeightUnitOfMeasure:     sku.WeightUnitOfMeasure,
-		CurrencyCode:            sku.CurrencyCode,
-		DefaultProductID:        sku.DefaultProductID,
-		AdditionalProductID:     sku.AdditionalProductID,
-		ContainerShape:          sku.ContainerShape,
-		Depth:                   sku.Depth,
-		DimensionUnitOfMeasure:  sku.DimensionUnitOfMeasure,
-		Girth:                   sku.Girth,
-		Height:                  sku.Height,
-		ContainerSize:           sku.ContainerSize,
-		Width:                   sku.Width,
-		Discountable:            sku.Discountable,
-		DisplayTemplate:         sku.DisplayTemplate,
-		ExternalID:              sku.ExternalID,
-		FulfillmentType:         sku.FulfillmentType,
-		InventoryType:           sku.InventoryType,
-		IsMachineSortable:       sku.IsMachineSortable,
-		CreatedAt:               sku.CreatedAt,
-		UpdatedAt:               sku.UpdatedAt,
+		ID:                     sku.ID,
+		Name:                   sku.Name,
+		Description:            sku.Description,
+		LongDescription:        sku.LongDescription,
+		ActiveStartDate:        sku.ActiveStartDate,
+		ActiveEndDate:          sku.ActiveEndDate,
+		Available:              sku.Available,
+		Cost:                   sku.Cost,
+		RetailPrice:            sku.RetailPrice,
+		SalePrice:              sku.SalePrice,
+		Taxable:                sku.Taxable,
+		TaxCode:                sku.TaxCode,
+		UPC:                    sku.UPC,
+		URLKey:                 sku.URLKey,
+		Weight:                 sku.Weight,
+		WeightUnitOfMeasure:    sku.WeightUnitOfMeasure,
+		CurrencyCode:           sku.CurrencyCode,
+		DefaultProductID:       sku.DefaultProductID,
+		AdditionalProductID:    sku.AdditionalProductID,
+		ContainerShape:         sku.ContainerShape,
+		Depth:                  sku.Depth,
+		DimensionUnitOfMeasure: sku.DimensionUnitOfMeasure,
+		Girth:                  sku.Girth,
+		Height:                 sku.Height,
+		ContainerSize:          sku.ContainerSize,
+		Width:                  sku.Width,
+		Discountable:           sku.Discountable,
+		DisplayTemplate:        sku.DisplayTemplate,
+		ExternalID:             sku.ExternalID,
+		FulfillmentType:        sku.FulfillmentType,
+		InventoryType:          sku.InventoryType,
+		IsMachineSortable:      sku.IsMachineSortable,
+		CreatedAt:              sku.CreatedAt,
+		UpdatedAt:              sku.UpdatedAt,
 	}
 }
 
@@ -484,8 +484,8 @@ func toSkuAttributeDTO(attribute *domain.SKUAttribute) *SkuAttributeDTO {
 
 func toSkuProductOptionValueXrefDTO(xref *domain.SkuProductOptionValueXref) *SkuProductOptionValueXrefDTO {
 	return &SkuProductOptionValueXrefDTO{
-		ID:                  xref.ID,
-		SKUID:               xref.SKUID,
+		ID:                   xref.ID,
+		SKUID:                xref.SKUID,
 		ProductOptionValueID: xref.ProductOptionValueID,
 	}
 }

@@ -4,20 +4,38 @@ import (
 	"context"
 )
 
-// InventoryRepository provides an interface for managing SkuInventory.
+// InventoryRepository provides an interface for managing inventory levels.
 type InventoryRepository interface {
-	// Save stores a new SkuInventory record or updates an existing one.
-	Save(ctx context.Context, inventory *SkuInventory) error
+	// Save stores a new inventory level or updates an existing one.
+	Save(ctx context.Context, level *InventoryLevel) error
 
-	// FindByID retrieves a SkuInventory record by its unique identifier.
-	FindByID(ctx context.Context, id int64) (*SkuInventory, error)
+	// FindByID retrieves an inventory level by its unique identifier.
+	FindByID(ctx context.Context, id string) (*InventoryLevel, error)
 
-	// FindBySKUID retrieves a SkuInventory record by its associated SKU ID.
-	FindBySKUID(ctx context.Context, skuID int64) (*SkuInventory, error)
+	// FindBySKUID retrieves an inventory level by its associated SKU ID.
+	FindBySKUID(ctx context.Context, skuID string) (*InventoryLevel, error)
 
-	// FindByFulfillmentLocation retrieves SkuInventory records by fulfillment location.
-	FindByFulfillmentLocation(ctx context.Context, location string) ([]*SkuInventory, error)
+	// FindByWarehouse retrieves inventory levels by warehouse.
+	FindByWarehouse(ctx context.Context, warehouseID string) ([]*InventoryLevel, error)
 
-	// Delete removes a SkuInventory record by its unique identifier.
-	Delete(ctx context.Context, id int64) error
+	// Delete removes an inventory level by its unique identifier.
+	Delete(ctx context.Context, id string) error
+}
+
+// InventoryReservationRepository provides an interface for managing reservations.
+type InventoryReservationRepository interface {
+	// Save stores a new reservation or updates an existing one.
+	Save(ctx context.Context, reservation *InventoryReservation) error
+
+	// FindByID retrieves a reservation by its unique identifier.
+	FindByID(ctx context.Context, id string) (*InventoryReservation, error)
+
+	// FindByOrderID retrieves all reservations for an order.
+	FindByOrderID(ctx context.Context, orderID string) ([]*InventoryReservation, error)
+
+	// FindExpired retrieves all expired reservations.
+	FindExpired(ctx context.Context) ([]*InventoryReservation, error)
+
+	// Delete removes a reservation by its unique identifier.
+	Delete(ctx context.Context, id string) error
 }

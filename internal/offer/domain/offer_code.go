@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // OfferCode represents a promotional code associated with an offer
 type OfferCode struct {
@@ -30,12 +28,12 @@ func NewOfferCode(offerID int64, code string) (*OfferCode, error) {
 
 	now := time.Now()
 	return &OfferCode{
-		OfferID:      offerID,
-		Code:         code,
-		Uses:         0,
-		Archived:     false,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		OfferID:   offerID,
+		Code:      code,
+		Uses:      0,
+		Archived:  false,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}, nil
 }
 

@@ -1,19 +1,17 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // ContentType represents the type of content
 type ContentType string
 
 const (
-	ContentTypePage        ContentType = "PAGE"
-	ContentTypeArticle     ContentType = "ARTICLE"
-	ContentTypeBanner      ContentType = "BANNER"
-	ContentTypePromotion   ContentType = "PROMOTION"
+	ContentTypePage          ContentType = "PAGE"
+	ContentTypeArticle       ContentType = "ARTICLE"
+	ContentTypeBanner        ContentType = "BANNER"
+	ContentTypePromotion     ContentType = "PROMOTION"
 	ContentTypeEmailTemplate ContentType = "EMAIL_TEMPLATE"
-	ContentTypeWidget      ContentType = "WIDGET"
+	ContentTypeWidget        ContentType = "WIDGET"
 )
 
 // ContentStatus represents the publication status
@@ -50,31 +48,31 @@ type StructuredContent struct {
 
 // ContentField represents a field definition in a content type
 type ContentField struct {
-	Name        string
-	Type        FieldType
-	Required    bool
+	Name         string
+	Type         FieldType
+	Required     bool
 	DefaultValue interface{}
-	Validation  *FieldValidation
+	Validation   *FieldValidation
 }
 
 // FieldType represents the type of a field
 type FieldType string
 
 const (
-	FieldTypeText      FieldType = "TEXT"
-	FieldTypeRichText  FieldType = "RICH_TEXT"
-	FieldTypeNumber    FieldType = "NUMBER"
-	FieldTypeBoolean   FieldType = "BOOLEAN"
-	FieldTypeDate      FieldType = "DATE"
-	FieldTypeImage     FieldType = "IMAGE"
-	FieldTypeVideo     FieldType = "VIDEO"
-	FieldTypeFile      FieldType = "FILE"
-	FieldTypeURL       FieldType = "URL"
-	FieldTypeEmail     FieldType = "EMAIL"
-	FieldTypeSelect    FieldType = "SELECT"
+	FieldTypeText        FieldType = "TEXT"
+	FieldTypeRichText    FieldType = "RICH_TEXT"
+	FieldTypeNumber      FieldType = "NUMBER"
+	FieldTypeBoolean     FieldType = "BOOLEAN"
+	FieldTypeDate        FieldType = "DATE"
+	FieldTypeImage       FieldType = "IMAGE"
+	FieldTypeVideo       FieldType = "VIDEO"
+	FieldTypeFile        FieldType = "FILE"
+	FieldTypeURL         FieldType = "URL"
+	FieldTypeEmail       FieldType = "EMAIL"
+	FieldTypeSelect      FieldType = "SELECT"
 	FieldTypeMultiSelect FieldType = "MULTI_SELECT"
-	FieldTypeReference FieldType = "REFERENCE"
-	FieldTypeJSON      FieldType = "JSON"
+	FieldTypeReference   FieldType = "REFERENCE"
+	FieldTypeJSON        FieldType = "JSON"
 )
 
 // FieldValidation represents validation rules for a field
@@ -247,4 +245,18 @@ type ContentRepository interface {
 	FindPublished() ([]*StructuredContent, error)
 	FindScheduled() ([]*StructuredContent, error)
 	Delete(id string) error
+}
+
+// DomainError represents a business rule validation error
+type DomainError struct {
+	Message string
+}
+
+func (e *DomainError) Error() string {
+	return e.Message
+}
+
+// NewDomainError creates a new DomainError
+func NewDomainError(message string) error {
+	return &DomainError{Message: message}
 }

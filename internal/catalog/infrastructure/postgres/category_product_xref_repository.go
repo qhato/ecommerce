@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/domain"
 )
@@ -29,7 +28,6 @@ func (r *CategoryProductXrefRepository) Save(ctx context.Context, xref *domain.C
 
 	defaultReference := sql.NullBool{Bool: xref.DefaultReference, Valid: true}
 	displayOrder := sql.NullFloat64{Float64: xref.DisplayOrder, Valid: true}
-
 
 	if xref.ID == 0 {
 		// Insert new category-product xref

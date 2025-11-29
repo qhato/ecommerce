@@ -73,37 +73,37 @@ type OfferService interface {
 
 // OfferDTO represents an offer data transfer object.
 type OfferDTO struct {
-	ID                       int64
-	Name                     string
-	OfferType                domain.OfferType
-	OfferValue               float64
-	AdjustmentType           domain.OfferAdjustmentType
-	ApplyToChildItems        bool
-	ApplyToSalePrice         bool
-	Archived                 bool
-	AutomaticallyAdded       bool
+	ID                        int64
+	Name                      string
+	OfferType                 domain.OfferType
+	OfferValue                float64
+	AdjustmentType            domain.OfferAdjustmentType
+	ApplyToChildItems         bool
+	ApplyToSalePrice          bool
+	Archived                  bool
+	AutomaticallyAdded        bool
 	CombinableWithOtherOffers bool
-	OfferDescription         string
-	OfferDiscountType        domain.OfferDiscountType
-	EndDate                  *time.Time
-	MarketingMessage         string
-	MaxUsesPerCustomer       *int64
-	MaxUses                  *int
-	MaxUsesStrategy          string
-	MinimumDaysPerUsage      *int64
-	OfferItemQualifierRule   string
-	OfferItemTargetRule      string
-	OrderMinTotal            float64
-	OfferPriority            int
-	QualifyingItemMinTotal   float64
-	RequiresRelatedTarQual   bool
-	StartDate                time.Time
-	TargetMinTotal           float64
-	TargetSystem             string
-	TotalitarianOffer        bool
-	UseListForDiscounts      bool
-	CreatedAt                time.Time
-	UpdatedAt                time.Time
+	OfferDescription          string
+	OfferDiscountType         domain.OfferDiscountType
+	EndDate                   *time.Time
+	MarketingMessage          string
+	MaxUsesPerCustomer        *int64
+	MaxUses                   *int
+	MaxUsesStrategy           string
+	MinimumDaysPerUsage       *int64
+	OfferItemQualifierRule    string
+	OfferItemTargetRule       string
+	OrderMinTotal             float64
+	OfferPriority             int
+	QualifyingItemMinTotal    float64
+	RequiresRelatedTarQual    bool
+	StartDate                 time.Time
+	TargetMinTotal            float64
+	TargetSystem              string
+	TotalitarianOffer         bool
+	UseListForDiscounts       bool
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
 // OfferCodeDTO represents an offer code data transfer object.
@@ -166,66 +166,66 @@ type OfferPriceDataDTO struct {
 
 // CreateOfferCommand is a command to create a new offer.
 type CreateOfferCommand struct {
-	Name                     string
-	OfferType                domain.OfferType
-	OfferValue               float64
-	AdjustmentType           domain.OfferAdjustmentType
-	ApplyToChildItems        bool
-	ApplyToSalePrice         bool
-	AutomaticallyAdded       bool
+	Name                      string
+	OfferType                 domain.OfferType
+	OfferValue                float64
+	AdjustmentType            domain.OfferAdjustmentType
+	ApplyToChildItems         bool
+	ApplyToSalePrice          bool
+	AutomaticallyAdded        bool
 	CombinableWithOtherOffers bool
-	OfferDescription         string
-	OfferDiscountType        domain.OfferDiscountType
-	EndDate                  *time.Time
-	MarketingMessage         string
-	MaxUsesPerCustomer       *int64
-	MaxUses                  *int
-	MaxUsesStrategy          string
-	MinimumDaysPerUsage      *int64
-	OfferItemQualifierRule   string
-	OfferItemTargetRule      string
-	OrderMinTotal            float64
-	OfferPriority            int
-	QualifyingItemMinTotal   float64
-	RequiresRelatedTarQual   bool
-	StartDate                time.Time
-	TargetMinTotal           float64
-	TargetSystem             string
-	TotalitarianOffer        bool
-	UseListForDiscounts      bool
+	OfferDescription          string
+	OfferDiscountType         domain.OfferDiscountType
+	EndDate                   *time.Time
+	MarketingMessage          string
+	MaxUsesPerCustomer        *int64
+	MaxUses                   *int
+	MaxUsesStrategy           string
+	MinimumDaysPerUsage       *int64
+	OfferItemQualifierRule    string
+	OfferItemTargetRule       string
+	OrderMinTotal             float64
+	OfferPriority             int
+	QualifyingItemMinTotal    float64
+	RequiresRelatedTarQual    bool
+	StartDate                 time.Time
+	TargetMinTotal            float64
+	TargetSystem              string
+	TotalitarianOffer         bool
+	UseListForDiscounts       bool
 }
 
 // UpdateOfferCommand is a command to update an existing offer.
 type UpdateOfferCommand struct {
-	ID                       int64
-	Name                     *string
-	OfferType                *domain.OfferType
-	OfferValue               *float64
-	AdjustmentType           *domain.OfferAdjustmentType
-	ApplyToChildItems        *bool
-	ApplyToSalePrice         *bool
-	Archived                 *bool
-	AutomaticallyAdded       *bool
+	ID                        int64
+	Name                      *string
+	OfferType                 *domain.OfferType
+	OfferValue                *float64
+	AdjustmentType            *domain.OfferAdjustmentType
+	ApplyToChildItems         *bool
+	ApplyToSalePrice          *bool
+	Archived                  *bool
+	AutomaticallyAdded        *bool
 	CombinableWithOtherOffers *bool
-	OfferDescription         *string
-	OfferDiscountType        *domain.OfferDiscountType
-	EndDate                  *time.Time
-	MarketingMessage         *string
-	MaxUsesPerCustomer       *int64
-	MaxUses                  *int
-	MaxUsesStrategy          *string
-	MinimumDaysPerUsage      *int64
-	OfferItemQualifierRule   *string
-	OfferItemTargetRule      *string
-	OrderMinTotal            *float64
-	OfferPriority            *int
-	QualifyingItemMinTotal   *float64
-	RequiresRelatedTarQual   *bool
-	StartDate                *time.Time
-	TargetMinTotal           *float64
-	TargetSystem             *string
-	TotalitarianOffer        *bool
-	UseListForDiscounts      *bool
+	OfferDescription          *string
+	OfferDiscountType         *domain.OfferDiscountType
+	EndDate                   *time.Time
+	MarketingMessage          *string
+	MaxUsesPerCustomer        *int64
+	MaxUses                   *int
+	MaxUsesStrategy           *string
+	MinimumDaysPerUsage       *int64
+	OfferItemQualifierRule    *string
+	OfferItemTargetRule       *string
+	OrderMinTotal             *float64
+	OfferPriority             *int
+	QualifyingItemMinTotal    *float64
+	RequiresRelatedTarQual    *bool
+	StartDate                 *time.Time
+	TargetMinTotal            *float64
+	TargetSystem              *string
+	TotalitarianOffer         *bool
+	UseListForDiscounts       *bool
 }
 
 // CreateOfferCodeCommand is a command to create a new offer code.
@@ -284,13 +284,13 @@ type UpdateOfferPriceDataCommand struct {
 }
 
 type offerService struct {
-	offerRepo               domain.OfferRepository
-	offerCodeRepo           domain.OfferCodeRepository
-	offerItemCriteriaRepo   domain.OfferItemCriteriaRepository
-	offerRuleRepo           domain.OfferRuleRepository // Not used yet, but kept for future expansion
-	offerPriceDataRepo      domain.OfferPriceDataRepository
-	qualCritOfferXrefRepo   domain.QualCritOfferXrefRepository
-	tarCritOfferXrefRepo    domain.TarCritOfferXrefRepository
+	offerRepo             domain.OfferRepository
+	offerCodeRepo         domain.OfferCodeRepository
+	offerItemCriteriaRepo domain.OfferItemCriteriaRepository
+	offerRuleRepo         domain.OfferRuleRepository // Not used yet, but kept for future expansion
+	offerPriceDataRepo    domain.OfferPriceDataRepository
+	qualCritOfferXrefRepo domain.QualCritOfferXrefRepository
+	tarCritOfferXrefRepo  domain.TarCritOfferXrefRepository
 }
 
 // NewOfferService creates a new instance of OfferService.
@@ -304,13 +304,13 @@ func NewOfferService(
 	tarCritOfferXrefRepo domain.TarCritOfferXrefRepository,
 ) OfferService {
 	return &offerService{
-		offerRepo:               offerRepo,
-		offerCodeRepo:           offerCodeRepo,
-		offerItemCriteriaRepo:   offerItemCriteriaRepo,
-		offerRuleRepo:           offerRuleRepo,
-		offerPriceDataRepo:      offerPriceDataRepo,
-		qualCritOfferXrefRepo:   qualCritOfferXrefRepo,
-		tarCritOfferXrefRepo:    tarCritOfferXrefRepo,
+		offerRepo:             offerRepo,
+		offerCodeRepo:         offerCodeRepo,
+		offerItemCriteriaRepo: offerItemCriteriaRepo,
+		offerRuleRepo:         offerRuleRepo,
+		offerPriceDataRepo:    offerPriceDataRepo,
+		qualCritOfferXrefRepo: qualCritOfferXrefRepo,
+		tarCritOfferXrefRepo:  tarCritOfferXrefRepo,
 	}
 }
 
@@ -773,37 +773,37 @@ func (s *offerService) DeleteOfferPriceData(ctx context.Context, id int64) error
 
 func toOfferDTO(offer *domain.Offer) *OfferDTO {
 	return &OfferDTO{
-		ID:                       offer.ID,
-		Name:                     offer.Name,
-		OfferType:                offer.OfferType,
-		OfferValue:               offer.OfferValue,
-		AdjustmentType:           offer.AdjustmentType,
-		ApplyToChildItems:        offer.ApplyToChildItems,
-		ApplyToSalePrice:         offer.ApplyToSalePrice,
-		Archived:                 offer.Archived,
-		AutomaticallyAdded:       offer.AutomaticallyAdded,
+		ID:                        offer.ID,
+		Name:                      offer.Name,
+		OfferType:                 offer.OfferType,
+		OfferValue:                offer.OfferValue,
+		AdjustmentType:            offer.AdjustmentType,
+		ApplyToChildItems:         offer.ApplyToChildItems,
+		ApplyToSalePrice:          offer.ApplyToSalePrice,
+		Archived:                  offer.Archived,
+		AutomaticallyAdded:        offer.AutomaticallyAdded,
 		CombinableWithOtherOffers: offer.CombinableWithOtherOffers,
-		OfferDescription:         offer.OfferDescription,
-		OfferDiscountType:        offer.OfferDiscountType,
-		EndDate:                  offer.EndDate,
-		MarketingMessage:         offer.MarketingMessage,
-		MaxUsesPerCustomer:       offer.MaxUsesPerCustomer,
-		MaxUses:                  offer.MaxUses,
-		MaxUsesStrategy:          offer.MaxUsesStrategy,
-		MinimumDaysPerUsage:      offer.MinimumDaysPerUsage,
-		OfferItemQualifierRule:   offer.OfferItemQualifierRule,
-		OfferItemTargetRule:      offer.OfferItemTargetRule,
-		OrderMinTotal:            offer.OrderMinTotal,
-		OfferPriority:            offer.OfferPriority,
-		QualifyingItemMinTotal:   offer.QualifyingItemMinTotal,
-		RequiresRelatedTarQual:   offer.RequiresRelatedTarQual,
-		StartDate:                offer.StartDate,
-		TargetMinTotal:           offer.TargetMinTotal,
-		TargetSystem:             offer.TargetSystem,
-		TotalitarianOffer:        offer.TotalitarianOffer,
-		UseListForDiscounts:      offer.UseListForDiscounts,
-		CreatedAt:                offer.CreatedAt,
-		UpdatedAt:                offer.UpdatedAt,
+		OfferDescription:          offer.OfferDescription,
+		OfferDiscountType:         offer.OfferDiscountType,
+		EndDate:                   offer.EndDate,
+		MarketingMessage:          offer.MarketingMessage,
+		MaxUsesPerCustomer:        offer.MaxUsesPerCustomer,
+		MaxUses:                   offer.MaxUses,
+		MaxUsesStrategy:           offer.MaxUsesStrategy,
+		MinimumDaysPerUsage:       offer.MinimumDaysPerUsage,
+		OfferItemQualifierRule:    offer.OfferItemQualifierRule,
+		OfferItemTargetRule:       offer.OfferItemTargetRule,
+		OrderMinTotal:             offer.OrderMinTotal,
+		OfferPriority:             offer.OfferPriority,
+		QualifyingItemMinTotal:    offer.QualifyingItemMinTotal,
+		RequiresRelatedTarQual:    offer.RequiresRelatedTarQual,
+		StartDate:                 offer.StartDate,
+		TargetMinTotal:            offer.TargetMinTotal,
+		TargetSystem:              offer.TargetSystem,
+		TotalitarianOffer:         offer.TotalitarianOffer,
+		UseListForDiscounts:       offer.UseListForDiscounts,
+		CreatedAt:                 offer.CreatedAt,
+		UpdatedAt:                 offer.UpdatedAt,
 	}
 }
 

@@ -12,39 +12,39 @@ import (
 
 // CreateSKUCommand represents a command to create a SKU
 type CreateSKUCommand struct {
-	Name                  string  `json:"name" validate:"required"`
-	Description           string  `json:"description,omitempty"`
-	LongDescription       string  `json:"long_description,omitempty"`
-	UPC                   string  `json:"upc,omitempty"`
-	CurrencyCode          string  `json:"currency_code" validate:"required"`
-	Price                 float64 `json:"price" validate:"required,min=0"`
-	RetailPrice           float64 `json:"retail_price" validate:"required,min=0"`
-	SalePrice             float64 `json:"sale_price,omitempty"`
-	Cost                  float64 `json:"cost,omitempty"`
-	Available             bool    `json:"available"`
-	Discountable          bool    `json:"discountable"`
-	Taxable               bool    `json:"taxable"`
-	TaxCode               string  `json:"tax_code,omitempty"`
-	DefaultProductID      *int64  `json:"default_product_id,omitempty"`
-	Attributes            map[string]string `json:"attributes,omitempty"`
+	Name             string            `json:"name" validate:"required"`
+	Description      string            `json:"description,omitempty"`
+	LongDescription  string            `json:"long_description,omitempty"`
+	UPC              string            `json:"upc,omitempty"`
+	CurrencyCode     string            `json:"currency_code" validate:"required"`
+	Price            float64           `json:"price" validate:"required,min=0"`
+	RetailPrice      float64           `json:"retail_price" validate:"required,min=0"`
+	SalePrice        float64           `json:"sale_price,omitempty"`
+	Cost             float64           `json:"cost,omitempty"`
+	Available        bool              `json:"available"`
+	Discountable     bool              `json:"discountable"`
+	Taxable          bool              `json:"taxable"`
+	TaxCode          string            `json:"tax_code,omitempty"`
+	DefaultProductID *int64            `json:"default_product_id,omitempty"`
+	Attributes       map[string]string `json:"attributes,omitempty"`
 }
 
 // UpdateSKUCommand represents a command to update a SKU
 type UpdateSKUCommand struct {
-	ID              int64              `json:"id" validate:"required"`
-	Name            string             `json:"name,omitempty"`
-	Description     string             `json:"description,omitempty"`
-	LongDescription string             `json:"long_description,omitempty"`
-	UPC             string             `json:"upc,omitempty"`
-	Price           *float64           `json:"price,omitempty"`
-	RetailPrice     *float64           `json:"retail_price,omitempty"`
-	SalePrice       *float64           `json:"sale_price,omitempty"`
-	Cost            *float64           `json:"cost,omitempty"`
-	Available       *bool              `json:"available,omitempty"`
-	Discountable    *bool              `json:"discountable,omitempty"`
-	Taxable         *bool              `json:"taxable,omitempty"`
-	TaxCode         string             `json:"tax_code,omitempty"`
-	Attributes      map[string]string  `json:"attributes,omitempty"`
+	ID              int64             `json:"id" validate:"required"`
+	Name            string            `json:"name,omitempty"`
+	Description     string            `json:"description,omitempty"`
+	LongDescription string            `json:"long_description,omitempty"`
+	UPC             string            `json:"upc,omitempty"`
+	Price           *float64          `json:"price,omitempty"`
+	RetailPrice     *float64          `json:"retail_price,omitempty"`
+	SalePrice       *float64          `json:"sale_price,omitempty"`
+	Cost            *float64          `json:"cost,omitempty"`
+	Available       *bool             `json:"available,omitempty"`
+	Discountable    *bool             `json:"discountable,omitempty"`
+	Taxable         *bool             `json:"taxable,omitempty"`
+	TaxCode         string            `json:"tax_code,omitempty"`
+	Attributes      map[string]string `json:"attributes,omitempty"`
 }
 
 // UpdateSKUPricingCommand represents a command to update SKU pricing

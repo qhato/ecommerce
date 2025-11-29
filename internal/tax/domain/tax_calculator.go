@@ -28,21 +28,21 @@ type TaxAddress struct {
 
 // TaxCalculationContext holds all data needed for tax calculation
 type TaxCalculationContext struct {
-	Items            []TaxableItem
-	ShippingAddress  *TaxAddress
-	BillingAddress   *TaxAddress
-	CustomerID       *string
-	CalculationDate  time.Time
-	ShippingAmount   decimal.Decimal
-	HandlingAmount   decimal.Decimal
+	Items           []TaxableItem
+	ShippingAddress *TaxAddress
+	BillingAddress  *TaxAddress
+	CustomerID      *string
+	CalculationDate time.Time
+	ShippingAmount  decimal.Decimal
+	HandlingAmount  decimal.Decimal
 }
 
 // TaxCalculationResult represents the result of tax calculation
 type TaxCalculationResult struct {
-	TotalTax    decimal.Decimal
-	TaxDetails  []*TaxDetail
-	Exemptions  []*AppliedExemption
-	ItemTaxes   map[string]decimal.Decimal // ItemID -> tax amount
+	TotalTax   decimal.Decimal
+	TaxDetails []*TaxDetail
+	Exemptions []*AppliedExemption
+	ItemTaxes  map[string]decimal.Decimal // ItemID -> tax amount
 }
 
 // AppliedExemption represents an exemption that was applied
@@ -56,9 +56,9 @@ type AppliedExemption struct {
 
 // TaxCalculator calculates taxes based on jurisdiction and rates
 type TaxCalculator struct {
-	rateRepository       TaxRateRepository
-	jurisdictionRepo     TaxJurisdictionRepository
-	exemptionRepo        TaxExemptionRepository
+	rateRepository   TaxRateRepository
+	jurisdictionRepo TaxJurisdictionRepository
+	exemptionRepo    TaxExemptionRepository
 }
 
 // TaxRateRepository defines repository for tax rates

@@ -26,7 +26,7 @@ type AdminPaymentHandler struct {
 // NewAdminPaymentHandler creates a new AdminPaymentHandler
 func NewAdminPaymentHandler(
 	commandHandler *commands.PaymentCommandHandler,
-	queryHandler   *queries.PaymentQueryHandler,
+	queryHandler *queries.PaymentQueryHandler,
 	validator *validator.Validator,
 	log *logger.Logger,
 ) *AdminPaymentHandler {

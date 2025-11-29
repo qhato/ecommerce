@@ -21,17 +21,17 @@ const (
 
 // AuditEntry represents an audit log entry
 type AuditEntry struct {
-	ID           string
-	EntityType   string // e.g., "Product", "Order", "Customer"
-	EntityID     string
-	Action       AuditAction
-	UserID       *string
-	Username     *string
-	IPAddress    *string
-	UserAgent    *string
-	Changes      map[string]interface{} // Old/new values
-	Metadata     map[string]interface{} // Additional context
-	Timestamp    time.Time
+	ID         string
+	EntityType string // e.g., "Product", "Order", "Customer"
+	EntityID   string
+	Action     AuditAction
+	UserID     *string
+	Username   *string
+	IPAddress  *string
+	UserAgent  *string
+	Changes    map[string]interface{} // Old/new values
+	Metadata   map[string]interface{} // Additional context
+	Timestamp  time.Time
 }
 
 // AuditLogger defines the interface for audit logging

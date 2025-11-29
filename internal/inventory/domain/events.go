@@ -1,58 +1,67 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
-// SkuInventoryCreatedEvent is published when a new SkuInventory record is created.
-type SkuInventoryCreatedEvent struct {
-	InventoryID    int64
-	SKUID          int64
+// InventoryLevelCreatedEvent is published when a new inventory level is created.
+type InventoryLevelCreatedEvent struct {
+	InventoryID    string
+	SKUID          string
 	QuantityOnHand int
 	CreationTime   time.Time
 }
 
 // QuantityOnHandUpdatedEvent is published when the quantity on hand for a SKU changes.
 type QuantityOnHandUpdatedEvent struct {
-	InventoryID    int64
-	SKUID          int64
-	OldQuantity    int
-	NewQuantity    int
-	UpdateTime     time.Time
+	InventoryID string
+	SKUID       string
+	OldQuantity int
+	NewQuantity int
+	UpdateTime  time.Time
 }
 
-// QuantityAllocatedEvent is published when inventory is allocated for an order.
-type QuantityAllocatedEvent struct {
-	InventoryID    int64
-	SKUID          int64
-	Quantity       int
-	OrderID        int64
-	AllocationTime time.Time
+// InventoryReservedEvent is published when inventory is reserved.
+type InventoryReservedEvent struct {
+	ReservationID string
+	SKUID         string
+	Quantity      int
+	OrderID       string
+	OrderItemID   string
+	ReservedTime  time.Time
 }
 
-// QuantityDeallocatedEvent is published when allocated inventory is released.
-type QuantityDeallocatedEvent struct {
-	InventoryID      int64
-	SKUID            int64
-	Quantity         int
-	OrderID          int64
-	DeallocationTime time.Time
+// InventoryReleasedEvent is published when reserved inventory is released.
+type InventoryReleasedEvent struct {
+	ReservationID string
+	SKUID         string
+	Quantity      int
+	OrderID       string
+	ReleasedTime  time.Time
 }
 
 // InventoryFulfilledEvent is published when allocated inventory is fulfilled (e.g., shipped).
 type InventoryFulfilledEvent struct {
-	InventoryID    int64
-	SKUID          int64
-	Quantity       int
-	OrderID        int64
+	ReservationID   string
+	SKUID           string
+	Quantity        int
+	OrderID         string
 	FulfillmentTime time.Time
 }
 
-// InventoryStatusUpdatedEvent is published when the inventory status of a SKU changes.
-type InventoryStatusUpdatedEvent struct {
-	InventoryID int64
-	SKUID       int64
-	OldStatus   InventoryStatus
-	NewStatus   InventoryStatus
-	UpdateTime  time.Time
+// InventoryReceivedEvent is published when new inventory is received.
+type InventoryReceivedEvent struct {
+	InventoryID  string
+	SKUID        string
+	Quantity     int
+	WarehouseID  *string
+	ReceivedTime time.Time
+}
+
+// ReorderPointReachedEvent is published when inventory reaches reorder point.
+type ReorderPointReachedEvent struct {
+	InventoryID     string
+	SKUID           string
+	CurrentQuantity int
+	ReorderPoint    int
+	ReorderQuantity int
+	EventTime       time.Time
 }

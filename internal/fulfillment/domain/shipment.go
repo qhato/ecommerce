@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // ShipmentStatus represents the status of a shipment
 type ShipmentStatus string

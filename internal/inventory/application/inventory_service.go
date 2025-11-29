@@ -37,15 +37,15 @@ type InventoryService interface {
 
 // SKUAvailabilityDTO represents a SKU availability data transfer object.
 type SKUAvailabilityDTO struct {
-	ID                  int64
-	SkuID               int64
-	AvailabilityDate    *time.Time
-	AvailabilityStatus  string
-	LocationID          *int64
-	QtyOnHand           int
-	ReserveQty          int
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	ID                 int64
+	SkuID              int64
+	AvailabilityDate   *time.Time
+	AvailabilityStatus string
+	LocationID         *int64
+	QtyOnHand          int
+	ReserveQty         int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // CreateSKUAvailabilityCommand is a command to create a new SKUAvailability.
@@ -203,14 +203,14 @@ func (s *inventoryService) DeleteSKUAvailability(ctx context.Context, id int64) 
 
 func toSKUAvailabilityDTO(availability *domain.SKUAvailability) *SKUAvailabilityDTO {
 	return &SKUAvailabilityDTO{
-		ID:                  availability.ID,
-		SkuID:               availability.SkuID,
-		AvailabilityDate:    availability.AvailabilityDate,
-		AvailabilityStatus:  availability.AvailabilityStatus,
-		LocationID:          availability.LocationID,
-		QtyOnHand:           availability.QtyOnHand,
-		ReserveQty:          availability.ReserveQty,
-		CreatedAt:           availability.CreatedAt,
-		UpdatedAt:           availability.UpdatedAt,
+		ID:                 availability.ID,
+		SkuID:              availability.SkuID,
+		AvailabilityDate:   availability.AvailabilityDate,
+		AvailabilityStatus: availability.AvailabilityStatus,
+		LocationID:         availability.LocationID,
+		QtyOnHand:          availability.QtyOnHand,
+		ReserveQty:         availability.ReserveQty,
+		CreatedAt:          availability.CreatedAt,
+		UpdatedAt:          availability.UpdatedAt,
 	}
 }

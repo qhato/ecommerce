@@ -1,21 +1,19 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // TaxDetail represents a tax detail entry, often linked to a tax rate configuration.
 type TaxDetail struct {
 	ID               int64
-	Amount           float64   // From blc_tax_detail.amount (numeric(19,5))
-	TaxCountry       string    // From blc_tax_detail.tax_country
-	JurisdictionName string    // From blc_tax_detail.jurisdiction_name
-	Rate             float64   // From blc_tax_detail.rate (numeric(19,5))
-	TaxRegion        string    // From blc_tax_detail.tax_region
-	TaxName          string    // From blc_tax_detail.tax_name
-	Type             string    // From blc_tax_detail.type
-	CurrencyCode     string    // From blc_tax_detail.currency_code
-	ModuleConfigID   *int64    // From blc_tax_detail.module_config_id (int8 NULL)
+	Amount           float64 // From blc_tax_detail.amount (numeric(19,5))
+	TaxCountry       string  // From blc_tax_detail.tax_country
+	JurisdictionName string  // From blc_tax_detail.jurisdiction_name
+	Rate             float64 // From blc_tax_detail.rate (numeric(19,5))
+	TaxRegion        string  // From blc_tax_detail.tax_region
+	TaxName          string  // From blc_tax_detail.tax_name
+	Type             string  // From blc_tax_detail.type
+	CurrencyCode     string  // From blc_tax_detail.currency_code
+	ModuleConfigID   *int64  // From blc_tax_detail.module_config_id (int8 NULL)
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }

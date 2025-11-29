@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // TaxType represents the type of tax
 type TaxType string
@@ -186,14 +184,14 @@ func (tj *TaxJurisdiction) MatchesAddress(country, region, postalCode, city, cou
 // TaxExemption represents a tax exemption for a customer or category
 type TaxExemption struct {
 	ID             int64
-	CustomerID     *string // Optional: customer-specific exemption
-	CategoryID     *string // Optional: category-specific exemption
-	ProductID      *string // Optional: product-specific exemption
-	ExemptionCode  string  // Code identifying the exemption (e.g., "RESALE", "NONPROFIT")
-	Reason         string  // Reason for exemption
-	DocumentNumber *string // Certificate or document number
-	Country        string  // Country where exemption applies
-	Region         *string // Optional: region where exemption applies
+	CustomerID     *string   // Optional: customer-specific exemption
+	CategoryID     *string   // Optional: category-specific exemption
+	ProductID      *string   // Optional: product-specific exemption
+	ExemptionCode  string    // Code identifying the exemption (e.g., "RESALE", "NONPROFIT")
+	Reason         string    // Reason for exemption
+	DocumentNumber *string   // Certificate or document number
+	Country        string    // Country where exemption applies
+	Region         *string   // Optional: region where exemption applies
 	ExemptTaxTypes []TaxType // Which tax types are exempt
 	Active         bool
 	EffectiveFrom  time.Time

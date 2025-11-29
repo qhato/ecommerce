@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // QualCritOfferXref represents a cross-reference between an Offer and OfferItemCriteria
 // for qualifying items (i.e., conditions that must be met for the offer to apply)

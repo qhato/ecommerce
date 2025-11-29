@@ -69,7 +69,6 @@ func (r *OfferRepository) Save(ctx context.Context, offer *domain.Offer) error {
 	targetMinTotal := sql.NullFloat64{Float64: offer.TargetMinTotal, Valid: offer.TargetMinTotal != 0.0}
 	targetSystem := sql.NullString{String: offer.TargetSystem, Valid: offer.TargetSystem != ""}
 
-
 	if offer.ID == 0 {
 		// Insert new offer
 		query := `

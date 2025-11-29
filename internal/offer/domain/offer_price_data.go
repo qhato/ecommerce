@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // OfferPriceData represents price data associated with an offer for specific items or conditions
 type OfferPriceData struct {

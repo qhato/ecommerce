@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // OfferItemCriteria represents criteria for matching order items for an offer
 type OfferItemCriteria struct {

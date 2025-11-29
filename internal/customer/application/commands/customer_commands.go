@@ -23,12 +23,12 @@ type RegisterCustomerCommand struct {
 
 // UpdateCustomerCommand represents a command to update customer profile
 type UpdateCustomerCommand struct {
-	ID           int64              `json:"id" validate:"required"`
-	FirstName    string             `json:"first_name,omitempty"`
-	LastName     string             `json:"last_name,omitempty"`
-	EmailAddress string             `json:"email_address,omitempty" validate:"omitempty,email"`
-	ReceiveEmail *bool              `json:"receive_email,omitempty"`
-	Attributes   map[string]string  `json:"attributes,omitempty"`
+	ID           int64             `json:"id" validate:"required"`
+	FirstName    string            `json:"first_name,omitempty"`
+	LastName     string            `json:"last_name,omitempty"`
+	EmailAddress string            `json:"email_address,omitempty" validate:"omitempty,email"`
+	ReceiveEmail *bool             `json:"receive_email,omitempty"`
+	Attributes   map[string]string `json:"attributes,omitempty"`
 }
 
 // ChangePasswordCommand represents a command to change password

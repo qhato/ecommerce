@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/qhato/ecommerce/internal/order/domain"
 )
@@ -135,7 +134,6 @@ func (r *FulfillmentGroupRepository) FindByID(ctx context.Context, id int64) (*d
 	var service sql.NullString
 	var status sql.NullString
 	var fgType sql.NullString
-
 
 	row := r.db.QueryRowContext(ctx, query, id)
 	err := row.Scan(

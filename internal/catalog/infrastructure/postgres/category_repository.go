@@ -60,7 +60,6 @@ func (r *CategoryRepository) Save(ctx context.Context, category *domain.Category
 		defaultParentCategoryID = sql.NullInt64{Int64: *category.DefaultParentCategoryID, Valid: true}
 	}
 
-
 	if category.ID == 0 {
 		// Insert new category
 		query := `
@@ -410,7 +409,7 @@ func (r *CategoryRepository) FindAll(ctx context.Context, filter *domain.Categor
 			"name":          "name",
 			"display_order": "root_display_order",
 			"created_at":    "created_at",
-		} 
+		}
 		sortColumn, ok := orderBy[filter.SortBy]
 		if !ok {
 			sortColumn = "name"

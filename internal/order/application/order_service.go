@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/application"
 	"github.com/qhato/ecommerce/internal/inventory/application"

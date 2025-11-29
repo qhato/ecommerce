@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 )
 
 type shippingService struct {

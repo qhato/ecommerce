@@ -1,34 +1,32 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // Category represents a product category
 type Category struct {
-	ID                       int64
-	Name                     string
-	Description              string
-	LongDescription          string
-	ActiveStartDate          *time.Time
-	ActiveEndDate            *time.Time
-	Archived                 bool // From blc_category.archived (bpchar(1) 'Y'/'N')
-	DisplayTemplate          string
-	ExternalID               string
-	FulfillmentType          string
-	InventoryType            string
-	MetaDescription          string // From blc_category.meta_desc
-	MetaTitle                string // From blc_category.meta_title
-	OverrideGeneratedURL     bool
-	ProductDescPattern       string // From blc_category.product_desc_pattern_override
-	ProductTitlePattern      string // From blc_category.product_title_pattern_override
-	RootDisplayOrder         float64 // From blc_category.root_display_order
-	TaxCode                  string
-	URL                      string
-	URLKey                   string
-	DefaultParentCategoryID  *int64 // From blc_category.default_parent_category_id
-	CreatedAt                time.Time
-	UpdatedAt                time.Time
+	ID                      int64
+	Name                    string
+	Description             string
+	LongDescription         string
+	ActiveStartDate         *time.Time
+	ActiveEndDate           *time.Time
+	Archived                bool // From blc_category.archived (bpchar(1) 'Y'/'N')
+	DisplayTemplate         string
+	ExternalID              string
+	FulfillmentType         string
+	InventoryType           string
+	MetaDescription         string // From blc_category.meta_desc
+	MetaTitle               string // From blc_category.meta_title
+	OverrideGeneratedURL    bool
+	ProductDescPattern      string  // From blc_category.product_desc_pattern_override
+	ProductTitlePattern     string  // From blc_category.product_title_pattern_override
+	RootDisplayOrder        float64 // From blc_category.root_display_order
+	TaxCode                 string
+	URL                     string
+	URLKey                  string
+	DefaultParentCategoryID *int64 // From blc_category.default_parent_category_id
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }
 
 // NewCategory creates a new category

@@ -4,13 +4,13 @@ import "time"
 
 // CategoryProductXref represents the cross-reference between a Category and a Product
 type CategoryProductXref struct {
-	ID             int64
-	CategoryID     int64
-	ProductID      int64
-	DefaultReference bool // From blc_category_product_xref.default_reference
-	DisplayOrder   float64 // From blc_category_product_xref.display_order
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID               int64
+	CategoryID       int64
+	ProductID        int64
+	DefaultReference bool    // From blc_category_product_xref.default_reference
+	DisplayOrder     float64 // From blc_category_product_xref.display_order
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // NewCategoryProductXref creates a new CategoryProductXref
@@ -24,12 +24,12 @@ func NewCategoryProductXref(categoryID, productID int64) (*CategoryProductXref, 
 
 	now := time.Now()
 	return &CategoryProductXref{
-		CategoryID:     categoryID,
-		ProductID:      productID,
+		CategoryID:       categoryID,
+		ProductID:        productID,
 		DefaultReference: false, // Default value
-		DisplayOrder:   0.0,     // Default value
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		DisplayOrder:     0.0,   // Default value
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}, nil
 }
 

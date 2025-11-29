@@ -17,47 +17,47 @@ const (
 	OfferTypeBOGO          OfferType = "BOGO" // Buy One Get One
 
 	OfferAdjustmentTypeOrderItem OfferAdjustmentType = "ORDER_ITEM_OFFER"
-	OfferAdjustmentTypeOrder    OfferAdjustmentType = "ORDER_OFFER"
+	OfferAdjustmentTypeOrder     OfferAdjustmentType = "ORDER_OFFER"
 
-	OfferDiscountTypeFixPrice     OfferDiscountType = "FIX_PRICE"
+	OfferDiscountTypeFixPrice        OfferDiscountType = "FIX_PRICE"
 	OfferDiscountTypePercentDiscount OfferDiscountType = "PERCENT_DISCOUNT"
-	OfferDiscountTypeAmountOff    OfferDiscountType = "AMOUNT_OFF"
+	OfferDiscountTypeAmountOff       OfferDiscountType = "AMOUNT_OFF"
 )
 
 // Offer represents a promotional offer or discount
 type Offer struct {
-	ID                       int64
-	Name                     string    // From blc_offer.offer_name
-	OfferType                OfferType // From blc_offer.offer_type
-	OfferValue               float64   // From blc_offer.offer_value (numeric(19,5))
-	AdjustmentType           OfferAdjustmentType // From blc_offer.offer_adjustment_type
-	ApplyToChildItems        bool      // From blc_offer.apply_to_child_items
-	ApplyToSalePrice         bool      // From blc_offer.apply_to_sale_price
-	Archived                 bool      // From blc_offer.archived (bpchar(1) 'Y'/'N')
-	AutomaticallyAdded       bool      // From blc_offer.automatically_added
-	CombinableWithOtherOffers bool      // From blc_offer.combinable_with_other_offers
-	OfferDescription         string    // From blc_offer.offer_description
-	OfferDiscountType        OfferDiscountType // From blc_offer.offer_discount_type
-	EndDate                  *time.Time // From blc_offer.end_date
-	MarketingMessage         string    // From blc_offer.marketing_message
-	MaxUsesPerCustomer       *int64    // From blc_offer.max_uses_per_customer (int8)
-	MaxUses                  *int      // From blc_offer.max_uses (int4)
-	MaxUsesStrategy          string    // From blc_offer.max_uses_strategy
-	MinimumDaysPerUsage      *int64    // From blc_offer.minimum_days_per_usage (int8)
-	OfferItemQualifierRule   string    // From blc_offer.offer_item_qualifier_rule (text)
-	OfferItemTargetRule      string    // From blc_offer.offer_item_target_rule (text)
-	OrderMinTotal            float64   // From blc_offer.order_min_total (numeric(19,5))
-	OfferPriority            int       // From blc_offer.offer_priority (int4)
-	QualifyingItemMinTotal   float64   // From blc_offer.qualifying_item_min_total (numeric(19,5))
-	RequiresRelatedTarQual   bool      // From blc_offer.requires_related_tar_qual
-	StartDate                time.Time // From blc_offer.start_date
-	TargetMinTotal           float64   // From blc_offer.target_min_total (numeric(19,5))
-	TargetSystem             string    // From blc_offer.target_system
-	TotalitarianOffer        bool      // From blc_offer.totalitarian_offer
-	UseListForDiscounts      bool      // From blc_offer.use_list_for_discounts
+	ID                        int64
+	Name                      string              // From blc_offer.offer_name
+	OfferType                 OfferType           // From blc_offer.offer_type
+	OfferValue                float64             // From blc_offer.offer_value (numeric(19,5))
+	AdjustmentType            OfferAdjustmentType // From blc_offer.offer_adjustment_type
+	ApplyToChildItems         bool                // From blc_offer.apply_to_child_items
+	ApplyToSalePrice          bool                // From blc_offer.apply_to_sale_price
+	Archived                  bool                // From blc_offer.archived (bpchar(1) 'Y'/'N')
+	AutomaticallyAdded        bool                // From blc_offer.automatically_added
+	CombinableWithOtherOffers bool                // From blc_offer.combinable_with_other_offers
+	OfferDescription          string              // From blc_offer.offer_description
+	OfferDiscountType         OfferDiscountType   // From blc_offer.offer_discount_type
+	EndDate                   *time.Time          // From blc_offer.end_date
+	MarketingMessage          string              // From blc_offer.marketing_message
+	MaxUsesPerCustomer        *int64              // From blc_offer.max_uses_per_customer (int8)
+	MaxUses                   *int                // From blc_offer.max_uses (int4)
+	MaxUsesStrategy           string              // From blc_offer.max_uses_strategy
+	MinimumDaysPerUsage       *int64              // From blc_offer.minimum_days_per_usage (int8)
+	OfferItemQualifierRule    string              // From blc_offer.offer_item_qualifier_rule (text)
+	OfferItemTargetRule       string              // From blc_offer.offer_item_target_rule (text)
+	OrderMinTotal             float64             // From blc_offer.order_min_total (numeric(19,5))
+	OfferPriority             int                 // From blc_offer.offer_priority (int4)
+	QualifyingItemMinTotal    float64             // From blc_offer.qualifying_item_min_total (numeric(19,5))
+	RequiresRelatedTarQual    bool                // From blc_offer.requires_related_tar_qual
+	StartDate                 time.Time           // From blc_offer.start_date
+	TargetMinTotal            float64             // From blc_offer.target_min_total (numeric(19,5))
+	TargetSystem              string              // From blc_offer.target_system
+	TotalitarianOffer         bool                // From blc_offer.totalitarian_offer
+	UseListForDiscounts       bool                // From blc_offer.use_list_for_discounts
 
-	CreatedAt                time.Time
-	UpdatedAt                time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // NewOffer creates a new offer
@@ -74,34 +74,34 @@ func NewOffer(
 	}
 
 	return &Offer{
-		Name:                     name,
-		OfferType:                offerType,
-		OfferValue:               offerValue,
-		AdjustmentType:           adjustmentType,
-		StartDate:                startDate,
-		Archived:                 false,
-		ApplyToChildItems:        false,
-		ApplyToSalePrice:         false,
-		AutomaticallyAdded:       false,
-		CombinableWithOtherOffers: true,
-		OfferDescription:         "",
-		OfferDiscountType:        "", // To be set explicitly if needed
-		MarketingMessage:         "",
-		MaxUsesStrategy:          "",
-		OfferItemQualifierRule:   "",
-		OfferItemTargetRule:      "",
-		OrderMinTotal:            0.0,
-		OfferPriority:            50, // Default priority
-		QualifyingItemMinTotal:   0.0,
-		RequiresRelatedTarQual:   false,
-		TargetMinTotal:           0.0,
-		TargetSystem:             "",
-		TotalitarianOffer:        false,
-		UseListForDiscounts:      false,
-		CreatedAt:                now,
-		UpdatedAt:                now,
-	},
-	nil
+			Name:                      name,
+			OfferType:                 offerType,
+			OfferValue:                offerValue,
+			AdjustmentType:            adjustmentType,
+			StartDate:                 startDate,
+			Archived:                  false,
+			ApplyToChildItems:         false,
+			ApplyToSalePrice:          false,
+			AutomaticallyAdded:        false,
+			CombinableWithOtherOffers: true,
+			OfferDescription:          "",
+			OfferDiscountType:         "", // To be set explicitly if needed
+			MarketingMessage:          "",
+			MaxUsesStrategy:           "",
+			OfferItemQualifierRule:    "",
+			OfferItemTargetRule:       "",
+			OrderMinTotal:             0.0,
+			OfferPriority:             50, // Default priority
+			QualifyingItemMinTotal:    0.0,
+			RequiresRelatedTarQual:    false,
+			TargetMinTotal:            0.0,
+			TargetSystem:              "",
+			TotalitarianOffer:         false,
+			UseListForDiscounts:       false,
+			CreatedAt:                 now,
+			UpdatedAt:                 now,
+		},
+		nil
 }
 
 // Activate sets the offer to active (by unarchiving)
@@ -124,7 +124,6 @@ func (o *Offer) SetEndDate(endDate time.Time) {
 
 // SetMaxUses sets the maximum number of uses for the offer (total)
 func (o *Offer) SetMaxUses(maxUses int) {
-	maxUsesInt64 := int64(maxUses) // Convert to int64 for the nullable field
 	o.MaxUses = &maxUses
 	o.UpdatedAt = time.Now()
 }

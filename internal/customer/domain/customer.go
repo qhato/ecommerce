@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // Customer represents a customer entity
 type Customer struct {
@@ -46,20 +44,20 @@ type CustomerAddress struct {
 
 // Address represents a physical address
 type Address struct {
-	ID               int64
-	AddressLine1     string
-	AddressLine2     string
-	AddressLine3     string
-	City             string
-	CompanyName      string
-	County           string
-	FirstName        string
-	LastName         string
-	PrimaryPhone     string
-	PostalCode       string
+	ID                  int64
+	AddressLine1        string
+	AddressLine2        string
+	AddressLine3        string
+	City                string
+	CompanyName         string
+	County              string
+	FirstName           string
+	LastName            string
+	PrimaryPhone        string
+	PostalCode          string
 	StateProvinceRegion string
-	CountryCode      string
-	IsoCountryAlpha2 string
+	CountryCode         string
+	IsoCountryAlpha2    string
 }
 
 // CustomerPhone represents a customer phone number

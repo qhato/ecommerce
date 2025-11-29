@@ -22,10 +22,10 @@ const (
 	ErrCodeTooManyRequests     ErrorCode = "TOO_MANY_REQUESTS"
 
 	// Server errors (5xx)
-	ErrCodeInternal        ErrorCode = "INTERNAL_ERROR"
-	ErrCodeNotImplemented  ErrorCode = "NOT_IMPLEMENTED"
-	ErrCodeServiceUnavail  ErrorCode = "SERVICE_UNAVAILABLE"
-	ErrCodeGatewayTimeout  ErrorCode = "GATEWAY_TIMEOUT"
+	ErrCodeInternal       ErrorCode = "INTERNAL_ERROR"
+	ErrCodeNotImplemented ErrorCode = "NOT_IMPLEMENTED"
+	ErrCodeServiceUnavail ErrorCode = "SERVICE_UNAVAILABLE"
+	ErrCodeGatewayTimeout ErrorCode = "GATEWAY_TIMEOUT"
 
 	// Business logic errors
 	ErrCodeInsufficientStock ErrorCode = "INSUFFICIENT_STOCK"

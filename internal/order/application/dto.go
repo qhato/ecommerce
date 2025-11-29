@@ -8,21 +8,21 @@ import (
 
 // OrderDTO represents order data for transfer
 type OrderDTO struct {
-	ID            int64           `json:"id"`
-	OrderNumber   string          `json:"order_number"`
-	CustomerID    int64           `json:"customer_id"`
-	EmailAddress  string          `json:"email_address"`
-	Name          string          `json:"name"`
-	Status        string          `json:"status"`
-	SubTotal      float64         `json:"sub_total"`
-	TotalTax      float64         `json:"total_tax"`
-	TotalShipping float64         `json:"total_shipping"`
-	Total         float64         `json:"total"`
-	CurrencyCode  string          `json:"currency_code"`
-	Items         []OrderItemDTO  `json:"items"`
-	SubmitDate    *time.Time      `json:"submit_date,omitempty"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
+	ID            int64          `json:"id"`
+	OrderNumber   string         `json:"order_number"`
+	CustomerID    int64          `json:"customer_id"`
+	EmailAddress  string         `json:"email_address"`
+	Name          string         `json:"name"`
+	Status        string         `json:"status"`
+	SubTotal      float64        `json:"sub_total"`
+	TotalTax      float64        `json:"total_tax"`
+	TotalShipping float64        `json:"total_shipping"`
+	Total         float64        `json:"total"`
+	CurrencyCode  string         `json:"currency_code"`
+	Items         []OrderItemDTO `json:"items"`
+	SubmitDate    *time.Time     `json:"submit_date,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 // OrderItemDTO represents order item data for transfer
@@ -40,10 +40,10 @@ type OrderItemDTO struct {
 
 // CreateOrderRequest represents a request to create an order
 type CreateOrderRequest struct {
-	CustomerID   int64                   `json:"customer_id" validate:"required"`
-	EmailAddress string                  `json:"email_address" validate:"required,email"`
-	Name         string                  `json:"name" validate:"required"`
-	CurrencyCode string                  `json:"currency_code" validate:"required,len=3"`
+	CustomerID   int64                    `json:"customer_id" validate:"required"`
+	EmailAddress string                   `json:"email_address" validate:"required,email"`
+	Name         string                   `json:"name" validate:"required"`
+	CurrencyCode string                   `json:"currency_code" validate:"required,len=3"`
 	Items        []CreateOrderItemRequest `json:"items" validate:"required,min=1,dive"`
 }
 

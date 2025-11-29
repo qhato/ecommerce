@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // OfferRule represents a rule that can be applied to an offer (e.g., conditions for eligibility)
 type OfferRule struct {

@@ -10,9 +10,9 @@ import (
 
 // ProductOptionRepository implements domain.ProductOptionRepository for in-memory persistence.
 type ProductOptionRepository struct {
-	mu        sync.RWMutex
-	options   map[int64]*domain.ProductOption
-	nextID    int64
+	mu      sync.RWMutex
+	options map[int64]*domain.ProductOption
+	nextID  int64
 }
 
 // NewProductOptionRepository creates a new in-memory product option repository.
@@ -62,9 +62,9 @@ func (r *ProductOptionRepository) Delete(ctx context.Context, id int64) error {
 
 // ProductOptionValueRepository implements domain.ProductOptionValueRepository for in-memory persistence.
 type ProductOptionValueRepository struct {
-	mu        sync.RWMutex
-	values    map[int64]*domain.ProductOptionValue
-	nextID    int64
+	mu     sync.RWMutex
+	values map[int64]*domain.ProductOptionValue
+	nextID int64
 }
 
 // NewProductOptionValueRepository creates a new in-memory product option value repository.

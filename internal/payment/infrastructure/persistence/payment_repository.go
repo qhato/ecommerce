@@ -144,14 +144,14 @@ func (r *PostgresPaymentRepository) FindByID(ctx context.Context, id int64) (*do
 
 	payment := &domain.Payment{}
 	var (
-		processedDate  sql.NullTime
-		authorizedDate sql.NullTime
-		capturedDate   sql.NullTime
-		refundedDate   sql.NullTime
-		transactionID  sql.NullString
+		processedDate   sql.NullTime
+		authorizedDate  sql.NullTime
+		capturedDate    sql.NullTime
+		refundedDate    sql.NullTime
+		transactionID   sql.NullString
 		gatewayResponse sql.NullString
-		authCode       sql.NullString
-		failureReason  sql.NullString
+		authCode        sql.NullString
+		failureReason   sql.NullString
 	)
 
 	err := r.db.QueryRow(ctx, query, id).Scan(

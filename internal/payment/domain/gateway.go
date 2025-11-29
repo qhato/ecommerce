@@ -58,10 +58,10 @@ type CardDetails struct {
 
 // BankDetails represents bank account information
 type BankDetails struct {
-	AccountNumber  string
-	RoutingNumber  string
-	AccountType    string // CHECKING, SAVINGS
-	AccountHolder  string
+	AccountNumber string
+	RoutingNumber string
+	AccountType   string // CHECKING, SAVINGS
+	AccountHolder string
 }
 
 // DigitalWalletDetails represents digital wallet information
@@ -104,7 +104,7 @@ type PaymentResponse struct {
 type GatewayConfig struct {
 	GatewayName string
 	Enabled     bool
-	Priority    int // Lower = higher priority
+	Priority    int    // Lower = higher priority
 	Environment string // SANDBOX, PRODUCTION
 	APIKey      string
 	APISecret   string

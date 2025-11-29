@@ -33,8 +33,6 @@ func NewShipmentCreatedEvent(shipmentID, orderID int64, carrier, shippingMethod 
 	}
 }
 
-
-
 type ShipmentShippedEvent struct {
 	event.BaseEvent
 	ShipmentID     int64  `json:"shipment_id"`
@@ -43,8 +41,6 @@ type ShipmentShippedEvent struct {
 	Carrier        string `json:"carrier"`
 }
 
-
-
 type ShipmentDeliveredEvent struct {
 	event.BaseEvent
 	ShipmentID     int64  `json:"shipment_id"`
@@ -52,12 +48,8 @@ type ShipmentDeliveredEvent struct {
 	TrackingNumber string `json:"tracking_number"`
 }
 
-
-
 type ShipmentCancelledEvent struct {
 	event.BaseEvent
 	ShipmentID int64 `json:"shipment_id"`
 	OrderID    int64 `json:"order_id"`
 }
-
-

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/application"
 	"github.com/qhato/ecommerce/internal/catalog/domain"

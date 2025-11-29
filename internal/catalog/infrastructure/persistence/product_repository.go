@@ -13,7 +13,7 @@ import (
 	"github.com/qhato/ecommerce/pkg/errors"
 )
 
-// DBTX define una interfaz común para ejecutar consultas, 
+// DBTX define una interfaz común para ejecutar consultas,
 // permitiendo que los métodos acepten tanto una conexión de pool como una transacción.
 type DBTX interface {
 	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
@@ -408,7 +408,7 @@ func (r *PostgresProductRepository) Search(ctx context.Context, queryTerm string
 	if !filter.IncludeArchived {
 		whereClause += " AND archived = 'N'"
 	}
-	
+
 	searchTerm := "%" + queryTerm + "%"
 
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM blc_product %s", whereClause)

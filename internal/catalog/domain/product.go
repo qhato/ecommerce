@@ -1,17 +1,15 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // Product represents a product in the catalog
 type Product struct {
 	ID                          int64
 	Archived                    bool
-	CanSellWithoutOptions       bool   // From blc_product.can_sell_without_options
+	CanSellWithoutOptions       bool // From blc_product.can_sell_without_options
 	CanonicalURL                string
 	DisplayTemplate             string
-	EnableDefaultSKUInInventory bool   // From blc_product.enable_default_sku_in_inventory
+	EnableDefaultSKUInInventory bool // From blc_product.enable_default_sku_in_inventory
 	Manufacture                 string
 	MetaDescription             string
 	MetaTitle                   string

@@ -10,8 +10,8 @@ import (
 
 // SkuRepository implements domain.SkuRepository for in-memory persistence.
 type SkuRepository struct {
-	mu   sync.RWMutex
-	skus map[int64]*domain.SKU
+	mu     sync.RWMutex
+	skus   map[int64]*domain.SKU
 	nextID int64
 }
 

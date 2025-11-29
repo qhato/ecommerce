@@ -1,18 +1,16 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // OrderItemAdjustment represents an adjustment (e.g., discount) applied to an individual order item
 type OrderItemAdjustment struct {
-	ID               int64
-	OrderItemID      int64
-	OfferID          int64     // Reference to the applied offer
-	AdjustmentReason string    // From blc_order_item_adjustment.adjustment_reason
-	AdjustmentValue  float64   // From blc_order_item_adjustment.adjustment_value
+	ID                 int64
+	OrderItemID        int64
+	OfferID            int64   // Reference to the applied offer
+	AdjustmentReason   string  // From blc_order_item_adjustment.adjustment_reason
+	AdjustmentValue    float64 // From blc_order_item_adjustment.adjustment_value
 	AppliedToSalePrice bool    // From blc_order_item_adjustment.applied_to_sale_price
-	CreatedAt        time.Time
+	CreatedAt          time.Time
 }
 
 // NewOrderItemAdjustment creates a new OrderItemAdjustment
@@ -37,11 +35,11 @@ func NewOrderItemAdjustment(
 
 	now := time.Now()
 	return &OrderItemAdjustment{
-		OrderItemID:      orderItemID,
-		OfferID:          offerID,
-		AdjustmentReason: adjustmentReason,
-		AdjustmentValue:  adjustmentValue,
+		OrderItemID:        orderItemID,
+		OfferID:            offerID,
+		AdjustmentReason:   adjustmentReason,
+		AdjustmentValue:    adjustmentValue,
 		AppliedToSalePrice: appliedToSalePrice,
-		CreatedAt:        now,
+		CreatedAt:          now,
 	}, nil
 }

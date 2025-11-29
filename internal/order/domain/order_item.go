@@ -1,38 +1,36 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // OrderItem represents an item in an order, capturing SKU details at the time of order
 type OrderItem struct {
-	ID                      int64
-	OrderID                 int64
-	SKUID                   int64
-	ProductID               int64     // Reference to the product it belongs to
-	Name                    string    // Product name at the time of order
-	Quantity                int
-	RetailPrice             float64   // Original retail price of the SKU
-	SalePrice               float64   // Sale price of the SKU (if any) at the time of order
-	Price                   float64   // The actual price charged for the item (after item-level discounts)
-	TotalPrice              float64   // Price * Quantity (after item-level discounts)
-	TaxAmount               float64
-	TaxCategory             string    // New: For tax calculations at the item level
-	ShippingAmount          float64   // From blc_order_item.shipping_amount (not directly in blc_order_item, but often related)
-	DiscountsAllowed        bool      // From blc_order_item.discounts_allowed
-	HasValidationErrors     bool      // From blc_order_item.has_validation_errors
-	ItemTaxableFlag         bool      // From blc_order_item.item_taxable_flag
-	OrderItemType           string    // From blc_order_item.order_item_type
-	RetailPriceOverride     bool      // From blc_order_item.retail_price_override
-	SalePriceOverride       bool      // From blc_order_item.sale_price_override
+	ID                  int64
+	OrderID             int64
+	SKUID               int64
+	ProductID           int64  // Reference to the product it belongs to
+	Name                string // Product name at the time of order
+	Quantity            int
+	RetailPrice         float64 // Original retail price of the SKU
+	SalePrice           float64 // Sale price of the SKU (if any) at the time of order
+	Price               float64 // The actual price charged for the item (after item-level discounts)
+	TotalPrice          float64 // Price * Quantity (after item-level discounts)
+	TaxAmount           float64
+	TaxCategory         string  // New: For tax calculations at the item level
+	ShippingAmount      float64 // From blc_order_item.shipping_amount (not directly in blc_order_item, but often related)
+	DiscountsAllowed    bool    // From blc_order_item.discounts_allowed
+	HasValidationErrors bool    // From blc_order_item.has_validation_errors
+	ItemTaxableFlag     bool    // From blc_order_item.item_taxable_flag
+	OrderItemType       string  // From blc_order_item.order_item_type
+	RetailPriceOverride bool    // From blc_order_item.retail_price_override
+	SalePriceOverride   bool    // From blc_order_item.sale_price_override
 
-	CategoryID              *int64    // From blc_order_item.category_id
-	GiftWrapItemID          *int64    // From blc_order_item.gift_wrap_item_id
-	ParentOrderItemID       *int64    // From blc_order_item.parent_order_item_id
-	PersonalMessageID       *int64    // From blc_order_item.personal_message_id
+	CategoryID        *int64 // From blc_order_item.category_id
+	GiftWrapItemID    *int64 // From blc_order_item.gift_wrap_item_id
+	ParentOrderItemID *int64 // From blc_order_item.parent_order_item_id
+	PersonalMessageID *int64 // From blc_order_item.personal_message_id
 
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // NewOrderItem creates a new order item
@@ -76,13 +74,13 @@ func NewOrderItem(
 		Price:               itemPrice, // Initial price before adjustments
 		TotalPrice:          itemPrice * float64(quantity),
 		TaxCategory:         taxCategory,
-		ShippingAmount:      0.0, // Default
-		DiscountsAllowed:    true, // Default
-		HasValidationErrors: false, // Default
-		ItemTaxableFlag:     true, // Default
+		ShippingAmount:      0.0,       // Default
+		DiscountsAllowed:    true,      // Default
+		HasValidationErrors: false,     // Default
+		ItemTaxableFlag:     true,      // Default
 		OrderItemType:       "DEFAULT", // Default
-		RetailPriceOverride: false, // Default
-		SalePriceOverride:   false, // Default
+		RetailPriceOverride: false,     // Default
+		SalePriceOverride:   false,     // Default
 		CreatedAt:           now,
 		UpdatedAt:           now,
 	}, nil

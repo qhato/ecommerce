@@ -48,26 +48,6 @@ type ProductService interface {
 }
 
 // ProductDTO represents a product data transfer object.
-type ProductDTO struct {
-	ID                          int64
-	Manufacture                 string
-	Model                       string
-	URL                         string
-	URLKey                      string
-	Archived                    bool
-	MetaTitle                   string
-	MetaDescription             string
-	DefaultSkuID                *int64
-	CanonicalURL                string
-	DisplayTemplate             string
-	EnableDefaultSKUInInventory bool
-	CanSellWithoutOptions       bool
-	OverrideGeneratedURL        bool
-	DefaultCategoryID           *int64
-	CreatedAt                   time.Time
-	UpdatedAt                   time.Time
-}
-
 // ProductAttributeDTO represents a product attribute data transfer object.
 type ProductAttributeDTO struct {
 	ID        int64
@@ -122,10 +102,10 @@ type UpdateProductCommand struct {
 }
 
 type productService struct {
-	productRepo              domain.ProductRepository
-	productAttributeRepo     domain.ProductAttributeRepository
-	productOptionXrefRepo    domain.ProductOptionXrefRepository
-	categoryProductXrefRepo  domain.CategoryProductXrefRepository
+	productRepo             domain.ProductRepository
+	productAttributeRepo    domain.ProductAttributeRepository
+	productOptionXrefRepo   domain.ProductOptionXrefRepository
+	categoryProductXrefRepo domain.CategoryProductXrefRepository
 }
 
 // NewProductService creates a new instance of ProductService.
@@ -136,10 +116,10 @@ func NewProductService(
 	categoryProductXrefRepo domain.CategoryProductXrefRepository,
 ) ProductService {
 	return &productService{
-		productRepo:              productRepo,
-		productAttributeRepo:     productAttributeRepo,
-		productOptionXrefRepo:    productOptionXrefRepo,
-		categoryProductXrefRepo:  categoryProductXrefRepo,
+		productRepo:             productRepo,
+		productAttributeRepo:    productAttributeRepo,
+		productOptionXrefRepo:   productOptionXrefRepo,
+		categoryProductXrefRepo: categoryProductXrefRepo,
 	}
 }
 

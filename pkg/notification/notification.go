@@ -27,19 +27,19 @@ const (
 
 // Notification represents a notification to be sent
 type Notification struct {
-	ID          string
-	Type        NotificationType
-	Recipient   string
-	Subject     string
-	Body        string
-	TemplateID  *string
+	ID           string
+	Type         NotificationType
+	Recipient    string
+	Subject      string
+	Body         string
+	TemplateID   *string
 	TemplateData map[string]interface{}
-	Status      NotificationStatus
-	Error       *string
-	SentAt      *time.Time
-	DeliveredAt *time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	Status       NotificationStatus
+	Error        *string
+	SentAt       *time.Time
+	DeliveredAt  *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // NotificationSender defines the interface for sending notifications

@@ -22,15 +22,15 @@ type SearchDocument struct {
 
 // SearchQuery represents a search query
 type SearchQuery struct {
-	Query       string
-	Filters     map[string][]string // Facet filters
-	PriceMin    *decimal.Decimal
-	PriceMax    *decimal.Decimal
-	CategoryIDs []string
+	Query        string
+	Filters      map[string][]string // Facet filters
+	PriceMin     *decimal.Decimal
+	PriceMax     *decimal.Decimal
+	CategoryIDs  []string
 	Availability *bool
-	SortBy      string // "relevance", "price_asc", "price_desc", "name", "created"
-	Page        int
-	PageSize    int
+	SortBy       string // "relevance", "price_asc", "price_desc", "name", "created"
+	Page         int
+	PageSize     int
 }
 
 // SearchResult represents search results

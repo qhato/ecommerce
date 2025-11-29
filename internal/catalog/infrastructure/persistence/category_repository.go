@@ -75,7 +75,7 @@ func (r *PostgresCategoryRepository) Create(ctx context.Context, category *domai
 			return err
 		}
 	}
-	
+
 	// Insert parent categories (xref)
 	if len(category.ParentCategories) > 0 {
 		if err := r.insertParentCategories(ctx, category.ID, category.ParentCategories); err != nil {

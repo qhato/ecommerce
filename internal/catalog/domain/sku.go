@@ -1,45 +1,43 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // SKU represents a Stock Keeping Unit
 type SKU struct {
-	ID                      int64
-	Name                    string
-	Description             string
-	LongDescription         string
-	ActiveStartDate         *time.Time
-	ActiveEndDate           *time.Time
-	Available               bool // From blc_sku.available_flag (bpchar(1) 'Y'/'N')
-	Cost                    float64
-	ContainerShape          string
-	Depth                   float64
-	DimensionUnitOfMeasure  string
-	Girth                   float64
-	Height                  float64
-	ContainerSize           string
-	Width                   float64
-	Discountable            bool // From blc_sku.discountable_flag (bpchar(1) 'Y'/'N')
-	DisplayTemplate         string
-	ExternalID              string
-	FulfillmentType         string
-	InventoryType           string
-	IsMachineSortable       bool
-	RetailPrice             float64	
-	SalePrice               float64
-	Taxable                 bool // From blc_sku.taxable_flag (bpchar(1) 'Y'/'N')
-	TaxCode                 string
-	UPC                     string
-	URLKey                  string
-	Weight                  float64
-	WeightUnitOfMeasure     string
-	CurrencyCode            string
-	DefaultProductID        *int64
-	AdditionalProductID     *int64 // From blc_sku.addl_product_id
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	ID                     int64
+	Name                   string
+	Description            string
+	LongDescription        string
+	ActiveStartDate        *time.Time
+	ActiveEndDate          *time.Time
+	Available              bool // From blc_sku.available_flag (bpchar(1) 'Y'/'N')
+	Cost                   float64
+	ContainerShape         string
+	Depth                  float64
+	DimensionUnitOfMeasure string
+	Girth                  float64
+	Height                 float64
+	ContainerSize          string
+	Width                  float64
+	Discountable           bool // From blc_sku.discountable_flag (bpchar(1) 'Y'/'N')
+	DisplayTemplate        string
+	ExternalID             string
+	FulfillmentType        string
+	InventoryType          string
+	IsMachineSortable      bool
+	RetailPrice            float64
+	SalePrice              float64
+	Taxable                bool // From blc_sku.taxable_flag (bpchar(1) 'Y'/'N')
+	TaxCode                string
+	UPC                    string
+	URLKey                 string
+	Weight                 float64
+	WeightUnitOfMeasure    string
+	CurrencyCode           string
+	DefaultProductID       *int64
+	AdditionalProductID    *int64 // From blc_sku.addl_product_id
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 // NewSKU creates a new SKU
@@ -49,18 +47,18 @@ func NewSKU(
 ) *SKU {
 	now := time.Now()
 	return &SKU{
-		Name:                     name,
-		Description:              description,
-		UPC:                      upc,
-		CurrencyCode:             currencyCode,
-		Cost:                     cost,
-		RetailPrice:              retailPrice,
-		SalePrice:                salePrice,
-		Available:                true,
-		Discountable:             true,
-		Taxable:                  true,
-		CreatedAt:                now,
-		UpdatedAt:                now,
+		Name:         name,
+		Description:  description,
+		UPC:          upc,
+		CurrencyCode: currencyCode,
+		Cost:         cost,
+		RetailPrice:  retailPrice,
+		SalePrice:    salePrice,
+		Available:    true,
+		Discountable: true,
+		Taxable:      true,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 }
 

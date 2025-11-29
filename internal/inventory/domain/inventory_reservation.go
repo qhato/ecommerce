@@ -19,19 +19,19 @@ const (
 
 // InventoryReservation represents a reservation of inventory for an order
 type InventoryReservation struct {
-	ID            string
-	SKUID         string
-	Quantity      int
-	OrderID       string
-	OrderItemID   string
-	Status        ReservationStatus
-	ReservedAt    time.Time
-	ExpiresAt     *time.Time
-	ReleasedAt    *time.Time
-	FulfilledAt   *time.Time
+	ID             string
+	SKUID          string
+	Quantity       int
+	OrderID        string
+	OrderItemID    string
+	Status         ReservationStatus
+	ReservedAt     time.Time
+	ExpiresAt      *time.Time
+	ReleasedAt     *time.Time
+	FulfilledAt    *time.Time
 	ReservationRef string // Reference ID for external systems
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // NewInventoryReservation creates a new inventory reservation
@@ -153,25 +153,25 @@ func (r *InventoryReservation) ExtendExpiration(additionalTime time.Duration) er
 
 // InventoryLevel represents the current inventory level for a SKU
 type InventoryLevel struct {
-	ID                   string
-	SKUID                string
-	WarehouseID          *string
-	LocationID           *string
-	QuantityAvailable    int
-	QuantityReserved     int
-	QuantityOnHand       int // Physical inventory
-	QuantityAllocated    int // Allocated for fulfillment
-	QuantityBackordered  int
-	QuantityInTransit    int
-	QuantityDamaged      int
-	ReorderPoint         int
-	ReorderQuantity      int
-	SafetyStock          int
-	AllowBackorder       bool
-	AllowPreorder        bool
-	LastCountDate        *time.Time
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	ID                  string
+	SKUID               string
+	WarehouseID         *string
+	LocationID          *string
+	QuantityAvailable   int
+	QuantityReserved    int
+	QuantityOnHand      int // Physical inventory
+	QuantityAllocated   int // Allocated for fulfillment
+	QuantityBackordered int
+	QuantityInTransit   int
+	QuantityDamaged     int
+	ReorderPoint        int
+	ReorderQuantity     int
+	SafetyStock         int
+	AllowBackorder      bool
+	AllowPreorder       bool
+	LastCountDate       *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 // NewInventoryLevel creates a new inventory level

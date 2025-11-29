@@ -20,11 +20,11 @@ const (
 	EventCategoryDeleted  = "catalog.category.deleted"
 
 	// SKU events
-	EventSKUCreated            = "catalog.sku.created"
-	EventSKUUpdated            = "catalog.sku.updated"
-	EventSKUDeleted            = "catalog.sku.deleted"
+	EventSKUCreated             = "catalog.sku.created"
+	EventSKUUpdated             = "catalog.sku.updated"
+	EventSKUDeleted             = "catalog.sku.deleted"
 	EventSKUAvailabilityChanged = "catalog.sku.availability_changed"
-	EventSKUPriceChanged       = "catalog.sku.price_changed"
+	EventSKUPriceChanged        = "catalog.sku.price_changed"
 )
 
 // ProductCreatedEvent is published when a product is created
@@ -48,12 +48,10 @@ func NewProductCreatedEvent(productID int64, model, manufacture string) *Product
 	}
 }
 
-
-
 // ProductUpdatedEvent is published when a product is updated
 type ProductUpdatedEvent struct {
 	event.BaseEvent
-	ProductID int64  `json:"product_id"`
+	ProductID int64                  `json:"product_id"`
 	Changes   map[string]interface{} `json:"changes"`
 }
 
@@ -68,8 +66,6 @@ func NewProductUpdatedEvent(productID int64, changes map[string]interface{}) *Pr
 		Changes:   changes,
 	}
 }
-
-
 
 // ProductArchivedEvent is published when a product is archived
 type ProductArchivedEvent struct {
@@ -87,8 +83,6 @@ func NewProductArchivedEvent(productID int64) *ProductArchivedEvent {
 		ProductID: productID,
 	}
 }
-
-
 
 // CategoryCreatedEvent is published when a category is created
 type CategoryCreatedEvent struct {
@@ -111,8 +105,6 @@ func NewCategoryCreatedEvent(categoryID int64, name string, parentID *int64) *Ca
 	}
 }
 
-
-
 // CategoryUpdatedEvent is published when a category is updated
 type CategoryUpdatedEvent struct {
 	event.BaseEvent
@@ -131,8 +123,6 @@ func NewCategoryUpdatedEvent(categoryID int64, changes map[string]interface{}) *
 		Changes:    changes,
 	}
 }
-
-
 
 // SKUCreatedEvent is published when a SKU is created
 type SKUCreatedEvent struct {
@@ -157,8 +147,6 @@ func NewSKUCreatedEvent(skuID int64, productID *int64, name string, price float6
 	}
 }
 
-
-
 // SKUAvailabilityChangedEvent is published when SKU availability changes
 type SKUAvailabilityChangedEvent struct {
 	event.BaseEvent
@@ -177,8 +165,6 @@ func NewSKUAvailabilityChangedEvent(skuID int64, available bool) *SKUAvailabilit
 		Available: available,
 	}
 }
-
-
 
 // SKUPriceChangedEvent is published when SKU price changes
 type SKUPriceChangedEvent struct {
@@ -200,5 +186,3 @@ func NewSKUPriceChangedEvent(skuID int64, oldPrice, newPrice float64) *SKUPriceC
 		NewPrice: newPrice,
 	}
 }
-
-

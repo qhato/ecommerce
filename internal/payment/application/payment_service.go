@@ -32,11 +32,11 @@ type PaymentResponseDTO struct {
 
 // AuthorizePaymentCommand is a command to authorize a payment.
 type AuthorizePaymentCommand struct {
-	OrderID      int64
-	CustomerID   int64
-	Amount       float64
-	CurrencyCode string
-	PaymentToken string // e.g., credit card token, PayPal token
+	OrderID           int64
+	CustomerID        int64
+	Amount            float64
+	CurrencyCode      string
+	PaymentToken      string // e.g., credit card token, PayPal token
 	PaymentMethodType string // e.g., "CREDIT_CARD", "PAYPAL"
 	// BillingAddressID int64 // Reference to billing address
 }
@@ -57,7 +57,6 @@ type RefundPaymentCommand struct {
 type VoidPaymentCommand struct {
 	TransactionID string
 }
-
 
 type paymentService struct {
 	// Add repository dependencies here, e.g., paymentTransactionRepo domain.PaymentTransactionRepository

@@ -11,9 +11,9 @@ import (
 
 // TaxRateRepository implements domain.TaxRateRepository for in-memory persistence.
 type TaxRateRepository struct {
-	mu      sync.RWMutex
+	mu       sync.RWMutex
 	taxRates map[int64]*domain.TaxRate
-	nextID  int64
+	nextID   int64
 }
 
 // NewTaxRateRepository creates a new in-memory tax rate repository.

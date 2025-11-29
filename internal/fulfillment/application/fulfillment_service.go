@@ -19,19 +19,19 @@ type FulfillmentService interface {
 
 // FulfillmentOrderDTO represents a fulfillment order data transfer object.
 type FulfillmentOrderDTO struct {
-	ID        int64
-	OrderID   int64
-	Status    string
+	ID         int64
+	OrderID    int64
+	Status     string
 	TrackingID string
-	Provider  string // e.g., "FEDEX", "UPS", "INTERNAL"
+	Provider   string // e.g., "FEDEX", "UPS", "INTERNAL"
 	// Other relevant fulfillment details
 }
 
 // SubmitFulfillmentOrderCommand is a command to submit a fulfillment order.
 type SubmitFulfillmentOrderCommand struct {
-	OrderID           int64
+	OrderID             int64
 	FulfillmentGroupIDs []int64
-	Provider          string
+	Provider            string
 	// Other details needed for submission
 }
 
@@ -63,25 +63,25 @@ func (s *fulfillmentService) UpdateFulfillmentStatus(ctx context.Context, fulfil
 	// Mock implementation
 	fmt.Printf("Mock: Updating fulfillment order %d status to %s\n", fulfillmentOrderID, newStatus)
 	return &FulfillmentOrderDTO{
-		ID:         fulfillmentOrderID,
-		Status:     newStatus,
-		TrackingID: fmt.Sprintf("TRACK%d", fulfillmentOrderID-1000), // Reverse mock ID
-		Provider:   "MOCK_PROVIDER",
-	},
-	nil
+			ID:         fulfillmentOrderID,
+			Status:     newStatus,
+			TrackingID: fmt.Sprintf("TRACK%d", fulfillmentOrderID-1000), // Reverse mock ID
+			Provider:   "MOCK_PROVIDER",
+		},
+		nil
 }
 
 func (s *fulfillmentService) GetFulfillmentOrder(ctx context.Context, fulfillmentOrderID int64) (*FulfillmentOrderDTO, error) {
 	// Mock implementation
 	if fulfillmentOrderID > 0 {
 		return &FulfillmentOrderDTO{
-			ID:         fulfillmentOrderID,
-			OrderID:    1, // Placeholder
-			Status:     "SHIPPED",
-			TrackingID: "TRACK123",
-			Provider:   "MOCK_PROVIDER",
-		},
-	nil
+				ID:         fulfillmentOrderID,
+				OrderID:    1, // Placeholder
+				Status:     "SHIPPED",
+				TrackingID: "TRACK123",
+				Provider:   "MOCK_PROVIDER",
+			},
+			nil
 	}
 	return nil, fmt.Errorf("fulfillment order with ID %d not found (mock)", fulfillmentOrderID)
 }

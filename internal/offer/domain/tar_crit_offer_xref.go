@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // TarCritOfferXref represents a cross-reference between an Offer and OfferItemCriteria
 // for target items (i.e., items that will receive the discount if the offer applies)

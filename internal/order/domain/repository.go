@@ -127,10 +127,10 @@ type OrderItemFilter struct {
 
 // FulfillmentGroupFilter represents filtering options for fulfillment groups
 type FulfillmentGroupFilter struct {
-	Page    int
-	PageSize int
-	OrderID int64
-	Status  string
-	SortBy  string
+	Page      int
+	PageSize  int
+	OrderID   int64
+	Status    string
+	SortBy    string
 	SortOrder string
 }

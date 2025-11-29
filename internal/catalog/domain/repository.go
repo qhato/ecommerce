@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"time"
 )
 
 // ProductRepository defines the interface for product persistence
@@ -256,21 +255,21 @@ type ProductOptionValueRepository interface {
 
 // ProductFilter represents filtering and pagination options for products
 type ProductFilter struct {
-	Page          int
-	PageSize      int
+	Page            int
+	PageSize        int
 	IncludeArchived bool
-	SortBy        string // "name", "created_at", "updated_at", "price"
-	SortOrder     string // "asc", "desc"
+	SortBy          string // "name", "created_at", "updated_at", "price"
+	SortOrder       string // "asc", "desc"
 }
 
 // CategoryFilter represents filtering and pagination options for categories
 type CategoryFilter struct {
-	Page          int
-	PageSize      int
+	Page            int
+	PageSize        int
 	IncludeArchived bool
-	ActiveOnly    bool
-	SortBy        string // "name", "display_order", "created_at"
-	SortOrder     string // "asc", "desc"
+	ActiveOnly      bool
+	SortBy          string // "name", "display_order", "created_at"
+	SortOrder       string // "asc", "desc"
 }
 
 // SKUFilter represents filtering and pagination options for SKUs
@@ -285,32 +284,32 @@ type SKUFilter struct {
 
 // ProductOptionFilter represents filtering and pagination options for product options
 type ProductOptionFilter struct {
-	Page     int
-	PageSize int
-	SortBy   string // "name", "display_order", "created_at"
+	Page      int
+	PageSize  int
+	SortBy    string // "name", "display_order", "created_at"
 	SortOrder string // "asc", "desc"
 }
 
 // NewProductFilter creates a default product filter
 func NewProductFilter() *ProductFilter {
 	return &ProductFilter{
-		Page:          1,
-		PageSize:      20,
+		Page:            1,
+		PageSize:        20,
 		IncludeArchived: false,
-		SortBy:        "created_at",
-		SortOrder:     "desc",
+		SortBy:          "created_at",
+		SortOrder:       "desc",
 	}
 }
 
 // NewCategoryFilter creates a default category filter
 func NewCategoryFilter() *CategoryFilter {
 	return &CategoryFilter{
-		Page:          1,
-		PageSize:      20,
+		Page:            1,
+		PageSize:        20,
 		IncludeArchived: false,
-		ActiveOnly:    true,
-		SortBy:        "display_order",
-		SortOrder:     "asc",
+		ActiveOnly:      true,
+		SortBy:          "display_order",
+		SortOrder:       "asc",
 	}
 }
 

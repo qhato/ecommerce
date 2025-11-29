@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/qhato/ecommerce/internal/inventory/domain"
 	"github.com/qhato/ecommerce/pkg/event"
@@ -12,9 +11,9 @@ import (
 
 // InventoryManagementService manages inventory reservations and levels
 type InventoryManagementService struct {
-	levelRepo       domain.InventoryRepository // Existing repo
-	eventBus        event.EventBus
-	log             logger.Logger
+	levelRepo domain.InventoryRepository // Existing repo
+	eventBus  event.EventBus
+	log       logger.Logger
 }
 
 // NewInventoryManagementService creates a new inventory management service
@@ -24,9 +23,9 @@ func NewInventoryManagementService(
 	log logger.Logger,
 ) *InventoryManagementService {
 	return &InventoryManagementService{
-		levelRepo:       levelRepo,
-		eventBus:        eventBus,
-		log:             log,
+		levelRepo: levelRepo,
+		eventBus:  eventBus,
+		log:       log,
 	}
 }
 

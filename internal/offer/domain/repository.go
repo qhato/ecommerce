@@ -105,7 +105,7 @@ type QualCritOfferXrefRepository interface {
 	// Delete removes a qualifying criteria xref by its unique identifier.
 	Delete(ctx context.Context, id int64) error
 
-	// DeleteByOfferID removes all qualifying criteria xrefs for a given offer ID. 
+	// DeleteByOfferID removes all qualifying criteria xrefs for a given offer ID.
 	DeleteByOfferID(ctx context.Context, offerID int64) error
 
 	// DeleteByOfferItemCriteriaID removes all qualifying criteria xrefs for a given offer item criteria ID.

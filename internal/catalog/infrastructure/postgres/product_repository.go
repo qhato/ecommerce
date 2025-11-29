@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/domain"
 )
@@ -89,7 +88,7 @@ func (r *ProductRepository) FindByID(ctx context.Context, id int64) (*domain.Pro
 			model, override_generated_url, url, url_key, 
 			default_category_id, default_sku_id, created_at, updated_at
 		FROM blc_product WHERE product_id = $1`
-	
+
 	var product domain.Product
 	var archivedChar string
 	var canSellWithoutOptions sql.NullBool
@@ -170,7 +169,7 @@ func (r *ProductRepository) FindAll(ctx context.Context, filter *domain.ProductF
 			"created_at": "created_at",
 			"updated_at": "updated_at",
 			"model":      "model",
-		} 
+		}
 		sortColumn, ok := orderBy[filter.SortBy]
 		if !ok {
 			sortColumn = "created_at"
@@ -239,7 +238,7 @@ func (r *ProductRepository) FindByURL(ctx context.Context, url string) (*domain.
 			model, override_generated_url, url, url_key, 
 			default_category_id, default_sku_id, created_at, updated_at
 		FROM blc_product WHERE url = $1`
-	
+
 	var product domain.Product
 	var archivedChar string
 	var canSellWithoutOptions sql.NullBool
@@ -287,7 +286,7 @@ func (r *ProductRepository) FindByURLKey(ctx context.Context, urlKey string) (*d
 			model, override_generated_url, url, url_key, 
 			default_category_id, default_sku_id, created_at, updated_at
 		FROM blc_product WHERE url_key = $1`
-	
+
 	var product domain.Product
 	var archivedChar string
 	var canSellWithoutOptions sql.NullBool
@@ -368,7 +367,7 @@ func (r *ProductRepository) FindAll(ctx context.Context, filter *domain.ProductF
 			"created_at": "created_at",
 			"updated_at": "updated_at",
 			"model":      "model",
-		} 
+		}
 		sortColumn, ok := orderBy[filter.SortBy]
 		if !ok {
 			sortColumn = "created_at"
@@ -437,7 +436,7 @@ func (r *ProductRepository) FindByCategoryID(ctx context.Context, categoryID int
 func (r *ProductRepository) Search(ctx context.Context, query string, filter *domain.ProductFilter) ([]*domain.Product, int64, error) {
 	// This is a basic example. A real search would use PostgreSQL's full-text search features.
 	searchTerm := "%" + strings.ToLower(query) + "%"
-	
+
 	countQuery := `SELECT COUNT(*) FROM blc_product WHERE LOWER(manufacture) LIKE $1 OR LOWER(model) LIKE $1 OR LOWER(meta_desc) LIKE $1 OR LOWER(meta_title) LIKE $1`
 	querySQL := `SELECT product_id, archived, can_sell_without_options, canonical_url, display_template,
 			enable_default_sku_in_inventory, manufacture, meta_desc, meta_title, model, override_generated_url,

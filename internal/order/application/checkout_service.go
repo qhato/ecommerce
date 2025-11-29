@@ -54,7 +54,7 @@ type SelectPaymentMethodCommand struct {
 }
 
 type checkoutService struct {
-	orderService   OrderService
+	orderService    OrderService
 	shippingService shippingApp.ShippingService
 	// customerService  CustomerService // Dependency on Customer service
 	// paymentService   PaymentService  // Dependency on Payment service
@@ -70,7 +70,7 @@ func NewCheckoutService(
 	// fulfillmentService FulfillmentService,
 ) CheckoutService {
 	return &checkoutService{
-		orderService:   orderService,
+		orderService:    orderService,
 		shippingService: shippingService,
 		// customerService:  customerService,
 		// paymentService:   paymentService,

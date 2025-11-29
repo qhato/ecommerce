@@ -14,7 +14,7 @@ type InventoryRepository struct {
 	inventories map[int64]*domain.SkuInventory
 	nextID      int64
 	// A map to quickly find inventory by SKU ID
-	skuIDIndex  map[int64]int64
+	skuIDIndex map[int64]int64
 }
 
 // NewInventoryRepository creates a new in-memory inventory repository.

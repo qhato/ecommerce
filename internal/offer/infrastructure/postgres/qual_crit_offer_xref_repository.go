@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/qhato/ecommerce/internal/offer/domain"
 )
@@ -161,7 +160,6 @@ func (r *QualCritOfferXrefRepository) FindByOfferItemCriteriaID(ctx context.Cont
 
 	return xrefs, nil
 }
-
 
 // Delete removes a qualifying criteria xref by its unique identifier.
 func (r *QualCritOfferXrefRepository) Delete(ctx context.Context, id int64) error {
