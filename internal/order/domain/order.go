@@ -19,73 +19,44 @@ const (
 
 // Order represents an order entity
 type Order struct {
-	ID            int64
-	OrderNumber   string
-	CustomerID    int64
-	EmailAddress  string
-	Name          string
-	Status        OrderStatus
-	SubTotal      float64
-	TotalTax      float64
-	TotalShipping float64
-	Total         float64
-	CurrencyCode  string
-	Items         []OrderItem
-	SubmitDate    *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-}
-
-// OrderItem represents an item in an order
-type OrderItem struct {
-	ID             int64
-	OrderID        int64
-	SKUID          int64
-	ProductName    string
-	Quantity       int
-	Price          float64
-	TotalPrice     float64
-	TaxAmount      float64
-	ShippingAmount float64
+	ID                      int64
+	OrderNumber             string
+	CustomerID              int64
+	EmailAddress            string
+	Name                    string
+	Status                  OrderStatus
+	OrderSubtotal           float64 // From blc_order.order_subtotal
+	TotalTax                float64
+	TotalShipping           float64
+	OrderTotal              float64 // From blc_order.order_total
+	CurrencyCode            string
+	IsPreview               bool    // From blc_order.is_preview
+	TaxOverride             bool    // From blc_order.tax_override
+	LocaleCode              string  // From blc_order.locale_code
+	SubmitDate              *time.Time
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }
 
 // NewOrder creates a new order
-func NewOrder(customerID int64, emailAddress, name, currencyCode string) *Order {
+func NewOrder(customerID int64, emailAddress, name, currencyCode, localeCode string) *Order {
 	now := time.Now()
 	return &Order{
-		CustomerID:   customerID,
-		EmailAddress: emailAddress,
-		Name:         name,
-		Status:       OrderStatusPending,
-		CurrencyCode: currencyCode,
-		Items:        make([]OrderItem, 0),
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		CustomerID:        customerID,
+		EmailAddress:      emailAddress,
+		Name:              name,
+		Status:            OrderStatusPending,
+		CurrencyCode:      currencyCode,
+		LocaleCode:        localeCode,
+		OrderSubtotal:     0.0,
+		TotalTax:          0.0,
+		TotalShipping:     0.0,
+		OrderTotal:        0.0,
+		IsPreview:         false,
+		TaxOverride:       false,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
-}
-
-// AddItem adds an item to the order
-func (o *Order) AddItem(skuID int64, productName string, quantity int, price float64) {
-	item := OrderItem{
-		OrderID:     o.ID,
-		SKUID:       skuID,
-		ProductName: productName,
-		Quantity:    quantity,
-		Price:       price,
-		TotalPrice:  price * float64(quantity),
-	}
-	o.Items = append(o.Items, item)
-	o.CalculateTotals()
-}
-
-// CalculateTotals recalculates order totals
-func (o *Order) CalculateTotals() {
-	o.SubTotal = 0
-	for _, item := range o.Items {
-		o.SubTotal += item.TotalPrice
-	}
-	o.Total = o.SubTotal + o.TotalTax + o.TotalShipping
-	o.UpdatedAt = time.Now()
 }
 
 // UpdateStatus updates the order status
@@ -95,11 +66,13 @@ func (o *Order) UpdateStatus(status OrderStatus) {
 }
 
 // Submit submits the order
-func (o *Order) Submit() {
+func (o *Order) Submit() error {
+	// Item check is now handled by application service ensuring items are added
 	now := time.Now()
 	o.SubmitDate = &now
 	o.Status = OrderStatusProcessing
 	o.UpdatedAt = now
+	return nil
 }
 
 // Cancel cancels the order
@@ -111,4 +84,18 @@ func (o *Order) Cancel() {
 // IsCancellable checks if order can be cancelled
 func (o *Order) IsCancellable() bool {
 	return o.Status == OrderStatusPending || o.Status == OrderStatusProcessing
+}
+
+// DomainError represents a business rule validation error within the domain.
+type DomainError struct {
+	Message string
+}
+
+func (e *DomainError) Error() string {
+	return e.Message
+}
+
+// NewDomainError creates a new DomainError.
+func NewDomainError(message string) error {
+	return &DomainError{Message: message}
 }

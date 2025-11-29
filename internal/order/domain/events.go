@@ -2,64 +2,66 @@ package domain
 
 import (
 	"time"
-
-	"github.com/qhato/ecommerce/pkg/event"
 )
 
-const (
-	EventOrderCreated   = "order.created"
-	EventOrderSubmitted = "order.submitted"
-	EventOrderCancelled = "order.cancelled"
-	EventOrderShipped   = "order.shipped"
-)
-
+// OrderCreatedEvent is published when a new order is successfully created.
 type OrderCreatedEvent struct {
-	event.BaseEvent
-	OrderID      int64  `json:"order_id"`
-	OrderNumber  string `json:"order_number"`
-	CustomerID   int64  `json:"customer_id"`
-	Total        float64 `json:"total"`
-	CurrencyCode string `json:"currency_code"`
+	OrderID      int64
+	CustomerID   int64
+	OrderNumber  string
+	CreationTime time.Time
 }
 
-func NewOrderCreatedEvent(orderID int64, orderNumber string, customerID int64, total float64, currencyCode string) *OrderCreatedEvent {
-	return &OrderCreatedEvent{
-		BaseEvent:    event.BaseEvent{Type: EventOrderCreated, OccurredOn: time.Now()},
-		OrderID:      orderID,
-		OrderNumber:  orderNumber,
-		CustomerID:   customerID,
-		Total:        total,
-		CurrencyCode: currencyCode,
-	}
+// OrderItemAddedEvent is published when an item is added to an existing order.
+type OrderItemAddedEvent struct {
+	OrderID      int64
+	OrderItemID  int64
+	SKUID        int64
+	Quantity     int
+	AddedTime    time.Time
 }
 
+// OrderStatusUpdatedEvent is published when an order's status changes.
+type OrderStatusUpdatedEvent struct {
+	OrderID     int64
+	OldStatus   OrderStatus
+	NewStatus   OrderStatus
+	UpdateTime  time.Time
+}
 
-
+// OrderSubmittedEvent is published when an order is submitted for processing.
 type OrderSubmittedEvent struct {
-	event.BaseEvent
-	OrderID     int64   `json:"order_id"`
-	OrderNumber string  `json:"order_number"`
-	CustomerID  int64   `json:"customer_id"`
-	Total       float64 `json:"total"`
+	OrderID      int64
+	OrderNumber  string
+	SubmitTime   time.Time
+	Total        float64
+	CurrencyCode string
 }
 
-
-
+// OrderCancelledEvent is published when an order is cancelled.
 type OrderCancelledEvent struct {
-	event.BaseEvent
-	OrderID     int64  `json:"order_id"`
-	OrderNumber string `json:"order_number"`
-	CustomerID  int64  `json:"customer_id"`
+	OrderID      int64
+	OrderNumber  string
+	CancelTime   time.Time
+	Reason       string // Optional: reason for cancellation
 }
 
-
-
-type OrderShippedEvent struct {
-	event.BaseEvent
-	OrderID      int64  `json:"order_id"`
-	OrderNumber  string `json:"order_number"`
-	CustomerID   int64  `json:"customer_id"`
-	TrackingInfo string `json:"tracking_info"`
+// OrderAdjustedEvent is published when an adjustment (discount/promotion) is applied to an order.
+type OrderAdjustedEvent struct {
+	OrderID     int64
+	AdjustmentID int64
+	OfferID     int64
+	Amount      float64
+	Description string
+	AdjustmentTime time.Time
 }
 
-
+// FulfillmentGroupAddedEvent is published when a new fulfillment group is added to an order.
+type FulfillmentGroupAddedEvent struct {
+	OrderID          int64
+	FulfillmentGroupID int64
+	Type             string
+	AddressID        int64
+	ItemIDs          []int64
+	CreationTime     time.Time
+}

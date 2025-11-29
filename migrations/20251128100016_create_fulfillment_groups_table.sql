@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS blc_fulfillment_group (
+    fulfillment_group_id BIGSERIAL PRIMARY KEY,
+    delivery_instruction VARCHAR(255) NULL,
+    price NUMERIC(19, 5) NULL,
+    shipping_price_taxable BOOLEAN NULL,
+    merchandise_total NUMERIC(19, 5) NULL,
+    method VARCHAR(255) NULL,
+    is_primary BOOLEAN NULL,
+    reference_number VARCHAR(255) NULL,
+    retail_price NUMERIC(19, 5) NULL,
+    sale_price NUMERIC(19, 5) NULL,
+    fulfillment_group_sequnce INT NULL,
+    service VARCHAR(255) NULL,
+    shipping_override BOOLEAN NULL,
+    status VARCHAR(255) NULL,
+    total NUMERIC(19, 5) NULL,
+    total_fee_tax NUMERIC(19, 5) NULL,
+    total_fg_tax NUMERIC(19, 5) NULL,
+    total_item_tax NUMERIC(19, 5) NULL,
+    total_tax NUMERIC(19, 5) NULL,
+    type VARCHAR(255) NULL,
+    address_id BIGINT NULL,
+    fulfillment_option_id BIGINT NULL,
+    order_id BIGINT NOT NULL,
+    personal_message_id BIGINT NULL,
+    phone_id BIGINT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    -- CONSTRAINT fk_blc_fulfillment_group_order_id FOREIGN KEY (order_id) REFERENCES blc_order(order_id),
+    -- CONSTRAINT fk_blc_fulfillment_group_address_id FOREIGN KEY (address_id) REFERENCES blc_address(address_id),
+    -- CONSTRAINT fk_blc_fulfillment_group_fulfillment_option_id FOREIGN KEY (fulfillment_option_id) REFERENCES blc_fulfillment_option(fulfillment_option_id),
+    -- CONSTRAINT fk_blc_fulfillment_group_personal_message_id FOREIGN KEY (personal_message_id) REFERENCES blc_personal_message(personal_message_id),
+    -- CONSTRAINT fk_blc_fulfillment_group_phone_id FOREIGN KEY (phone_id) REFERENCES blc_phone(phone_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_blc_fulfillment_group_order_id ON blc_fulfillment_group (order_id);
+CREATE INDEX IF NOT EXISTS idx_blc_fulfillment_group_status ON blc_fulfillment_group (status);
