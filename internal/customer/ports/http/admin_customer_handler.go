@@ -6,12 +6,12 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/qhato/ecommerce/internal/customer/application"
 	"github.com/qhato/ecommerce/internal/customer/application/commands"
 	"github.com/qhato/ecommerce/internal/customer/application/queries"
 	httpPkg "github.com/qhato/ecommerce/pkg/http"
 	"github.com/qhato/ecommerce/pkg/logger"
 	"github.com/qhato/ecommerce/pkg/validator"
+	"github.com/qhato/ecommerce/pkg/errors" // Import pkg/errors
 )
 
 // AdminCustomerHandler handles admin customer HTTP requests
@@ -53,31 +53,31 @@ func (h *AdminCustomerHandler) RegisterRoutes(r chi.Router) {
 
 // RegisterCustomer registers a new customer
 func (h *AdminCustomerHandler) RegisterCustomer(w http.ResponseWriter, r *http.Request) {
-	var req application.RegisterCustomerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+	var cmd commands.RegisterCustomerCommand // Use commands.RegisterCustomerCommand
+	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
-	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+	if err := h.validator.Validate(cmd); err != nil {
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
 
-	customer, err := h.commandHandler.RegisterCustomer(
-		r.Context(),
-		req.EmailAddress,
-		req.UserName,
-		req.Password,
-		req.FirstName,
-		req.LastName,
-	)
+	customerID, err := h.commandHandler.HandleRegisterCustomer(r.Context(), &cmd) // Call HandleRegisterCustomer
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to register customer", err)
+		// Differentiate between user-facing errors (e.g., conflict) and internal errors
+		if errors.IsConflict(err) {
+			httpPkg.RespondError(w, errors.Conflict(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to register customer").WithInternal(err))
+		}
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusCreated, application.ToCustomerDTO(customer))
+	httpPkg.RespondJSON(w, http.StatusCreated, map[string]interface{}{
+		"id": customerID,
+	})
 }
 
 // GetCustomer retrieves a customer by ID
@@ -85,34 +85,44 @@ func (h *AdminCustomerHandler) GetCustomer(w http.ResponseWriter, r *http.Reques
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
 
-	customer, err := h.queryHandler.GetByID(r.Context(), id)
+	query := &queries.GetCustomerByIDQuery{ID: id} // Use query struct
+	customer, err := h.queryHandler.HandleGetCustomerByID(r.Context(), query) // Call HandleGetCustomerByID
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "customer not found", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to get customer").WithInternal(err))
+		}
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusOK, application.ToCustomerDTO(customer))
+	httpPkg.RespondJSON(w, http.StatusOK, customer) // Removed redundant application.ToCustomerDTO(customer)
 }
 
 // GetCustomerByEmail retrieves a customer by email
 func (h *AdminCustomerHandler) GetCustomerByEmail(w http.ResponseWriter, r *http.Request) {
 	email := chi.URLParam(r, "email")
 	if email == "" {
-		httpPkg.RespondError(w, http.StatusBadRequest, "email is required", nil)
+		httpPkg.RespondError(w, errors.BadRequest("email is required"))
 		return
 	}
 
-	customer, err := h.queryHandler.GetByEmail(r.Context(), email)
+	query := &queries.GetCustomerByEmailQuery{Email: email} // Use query struct
+	customer, err := h.queryHandler.HandleGetCustomerByEmail(r.Context(), query) // Call HandleGetCustomerByEmail
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "customer not found", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to get customer by email").WithInternal(err))
+		}
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusOK, application.ToCustomerDTO(customer))
+	httpPkg.RespondJSON(w, http.StatusOK, customer) // Removed redundant application.ToCustomerDTO(customer)
 }
 
 // ListCustomers lists all customers
@@ -129,34 +139,32 @@ func (h *AdminCustomerHandler) ListCustomers(w http.ResponseWriter, r *http.Requ
 
 	sortBy := r.URL.Query().Get("sort_by")
 	sortOrder := r.URL.Query().Get("sort_order")
+	includeArchived := r.URL.Query().Get("include_archived") == "true"
+	activeOnly := r.URL.Query().Get("active_only") == "true"
+	registeredOnly := r.URL.Query().Get("registered_only") == "true"
+	searchQuery := r.URL.Query().Get("q")
 
-	filter := &application.CustomerFilter{
-		Page:      page,
-		PageSize:  pageSize,
-		SortBy:    sortBy,
-		SortOrder: sortOrder,
+
+	query := &queries.ListCustomersQuery{ // Use query struct
+		Page:            page,
+		PageSize:        pageSize,
+		SortBy:          sortBy,
+		SortOrder:       sortOrder,
+		IncludeArchived: includeArchived,
+		ActiveOnly:      activeOnly,
+		RegisteredOnly:  registeredOnly,
+		SearchQuery:     searchQuery,
 	}
 
-	customers, total, err := h.queryHandler.List(r.Context(), filter)
+	result, err := h.queryHandler.HandleListCustomers(r.Context(), query) // Call HandleListCustomers
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to list customers", err)
+		httpPkg.RespondError(w, errors.Internal("failed to list customers").WithInternal(err))
 		return
 	}
+	// The application.PaginatedResponse should handle the pagination details now.
+	// No need to manually calculate totalPages and create PaginatedCustomerResponse.
 
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize > 0 {
-		totalPages++
-	}
-
-	response := application.PaginatedCustomerResponse{
-		Data:       application.ToCustomerDTOs(customers),
-		Page:       page,
-		PageSize:   pageSize,
-		TotalItems: total,
-		TotalPages: totalPages,
-	}
-
-	httpPkg.RespondJSON(w, http.StatusOK, response)
+	httpPkg.RespondJSON(w, http.StatusOK, result)
 }
 
 // UpdateCustomer updates a customer's profile
@@ -164,24 +172,31 @@ func (h *AdminCustomerHandler) UpdateCustomer(w http.ResponseWriter, r *http.Req
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
 
-	var req application.UpdateCustomerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+	var cmd commands.UpdateCustomerCommand // Use commands.UpdateCustomerCommand
+	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
-	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+	if err := h.validator.Validate(cmd); err != nil {
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
+	cmd.ID = id // Set ID from URL param
 
-	err = h.commandHandler.UpdateCustomer(r.Context(), id, req.FirstName, req.LastName, req.EmailAddress)
+	err = h.commandHandler.HandleUpdateCustomer(r.Context(), &cmd) // Call HandleUpdateCustomer
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to update customer", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else if errors.IsConflict(err) {
+			httpPkg.RespondError(w, errors.Conflict(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to update customer").WithInternal(err))
+		}
 		return
 	}
 
@@ -196,24 +211,31 @@ func (h *AdminCustomerHandler) ChangePassword(w http.ResponseWriter, r *http.Req
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
 
-	var req application.ChangePasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+	var cmd commands.ChangePasswordCommand // Use commands.ChangePasswordCommand
+	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
-	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+	if err := h.validator.Validate(cmd); err != nil {
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
+	cmd.CustomerID = id // Set customer ID
 
-	err = h.commandHandler.ChangePassword(r.Context(), id, req.NewPassword)
+	err = h.commandHandler.HandleChangePassword(r.Context(), &cmd) // Call HandleChangePassword
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to change password", err)
+		if errors.IsUnauthorized(err) {
+			httpPkg.RespondError(w, errors.Unauthorized(err.Error()))
+		} else if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to change password").WithInternal(err))
+		}
 		return
 	}
 
@@ -228,13 +250,20 @@ func (h *AdminCustomerHandler) DeactivateCustomer(w http.ResponseWriter, r *http
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
 
-	err = h.commandHandler.DeactivateCustomer(r.Context(), id)
+	cmd := &commands.DeactivateCustomerCommand{ID: id} // Use commands.DeactivateCustomerCommand
+	err = h.commandHandler.HandleDeactivateCustomer(r.Context(), cmd) // Call HandleDeactivateCustomer
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to deactivate customer", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else if errors.IsConflict(err) {
+			httpPkg.RespondError(w, errors.Conflict(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to deactivate customer").WithInternal(err))
+		}
 		return
 	}
 
@@ -249,13 +278,20 @@ func (h *AdminCustomerHandler) ActivateCustomer(w http.ResponseWriter, r *http.R
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
 
-	err = h.commandHandler.ActivateCustomer(r.Context(), id)
+	cmd := &commands.ActivateCustomerCommand{ID: id} // Use commands.ActivateCustomerCommand
+	err = h.commandHandler.HandleActivateCustomer(r.Context(), cmd) // Call HandleActivateCustomer
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to activate customer", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else if errors.IsConflict(err) {
+			httpPkg.RespondError(w, errors.Conflict(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to activate customer").WithInternal(err))
+		}
 		return
 	}
 

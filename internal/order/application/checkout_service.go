@@ -80,7 +80,7 @@ func NewCheckoutService(
 
 // StartCheckout initializes the checkout process for an order.
 func (s *checkoutService) StartCheckout(ctx context.Context, orderID int64) (*OrderDTO, error) {
-	order, err := s.orderService.GetOrderByID(ctx, orderID)
+	order, err := s.orderService.HandleGetOrderByID(ctx, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get order %d: %w", orderID, err)
 	}
@@ -94,12 +94,12 @@ func (s *checkoutService) StartCheckout(ctx context.Context, orderID int64) (*Or
 		return nil, fmt.Errorf("failed to update order %d status to CUSTOMER_INFO: %w", orderID, err)
 	}
 
-	return s.orderService.GetOrderByID(ctx, orderID)
+	return s.orderService.HandleGetOrderByID(ctx, orderID)
 }
 
 // UpdateCustomerInformation updates customer details for the order.
 func (s *checkoutService) UpdateCustomerInformation(ctx context.Context, orderID int64, cmd *UpdateCustomerInformationCommand) (*OrderDTO, error) {
-	order, err := s.orderService.GetOrderByID(ctx, orderID)
+	order, err := s.orderService.HandleGetOrderByID(ctx, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get order %d: %w", orderID, err)
 	}
@@ -117,12 +117,12 @@ func (s *checkoutService) UpdateCustomerInformation(ctx context.Context, orderID
 		return nil, fmt.Errorf("failed to update order %d status to SHIPPING: %w", orderID, err)
 	}
 
-	return s.orderService.GetOrderByID(ctx, orderID)
+	return s.orderService.HandleGetOrderByID(ctx, orderID)
 }
 
 // SelectShippingAddressAndMethod selects shipping address and method for the order.
 func (s *checkoutService) SelectShippingAddressAndMethod(ctx context.Context, orderID int64, cmd *SelectShippingCommand) (*OrderDTO, error) {
-	order, err := s.orderService.GetOrderByID(ctx, orderID)
+	order, err := s.orderService.HandleGetOrderByID(ctx, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get order %d: %w", orderID, err)
 	}
@@ -170,12 +170,12 @@ func (s *checkoutService) SelectShippingAddressAndMethod(ctx context.Context, or
 		return nil, fmt.Errorf("failed to update order %d status to PAYMENT: %w", orderID, err)
 	}
 
-	return s.orderService.GetOrderByID(ctx, orderID)
+	return s.orderService.HandleGetOrderByID(ctx, orderID)
 }
 
 // SelectPaymentMethod selects payment method for the order and attempts authorization.
 func (s *checkoutService) SelectPaymentMethod(ctx context.Context, orderID int64, cmd *SelectPaymentMethodCommand) (*OrderDTO, error) {
-	order, err := s.orderService.GetOrderByID(ctx, orderID)
+	order, err := s.orderService.HandleGetOrderByID(ctx, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get order %d: %w", orderID, err)
 	}
@@ -203,12 +203,12 @@ func (s *checkoutService) SelectPaymentMethod(ctx context.Context, orderID int64
 		return nil, fmt.Errorf("failed to update order %d status to REVIEW: %w", orderID, err)
 	}
 
-	return s.orderService.GetOrderByID(ctx, orderID)
+	return s.orderService.HandleGetOrderByID(ctx, orderID)
 }
 
 // ConfirmOrder finalizes the order.
 func (s *checkoutService) ConfirmOrder(ctx context.Context, orderID int64) (*OrderDTO, error) {
-	order, err := s.orderService.GetOrderByID(ctx, orderID)
+	order, err := s.orderService.HandleGetOrderByID(ctx, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get order %d: %w", orderID, err)
 	}
@@ -222,12 +222,12 @@ func (s *checkoutService) ConfirmOrder(ctx context.Context, orderID int64) (*Ord
 		return nil, fmt.Errorf("failed to submit order %d: %w", orderID, err)
 	}
 
-	return s.orderService.GetOrderByID(ctx, orderID)
+	return s.orderService.HandleGetOrderByID(ctx, orderID)
 }
 
 // CancelCheckout cancels the checkout process.
 func (s *checkoutService) CancelCheckout(ctx context.Context, orderID int64) error {
-	order, err := s.orderService.GetOrderByID(ctx, orderID)
+	order, err := s.orderService.HandleGetOrderByID(ctx, orderID)
 	if err != nil {
 		return fmt.Errorf("failed to get order %d: %w", orderID, err)
 	}

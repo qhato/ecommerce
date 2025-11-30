@@ -41,15 +41,6 @@ type CategoryService interface {
 	RemoveCategoryAttribute(ctx context.Context, categoryAttributeID int64) error
 }
 
-// CategoryDTO represents a category data transfer object.
-// CategoryAttributeDTO represents a category attribute data transfer object.
-type CategoryAttributeDTO struct {
-	ID         int64
-	Name       string
-	Value      string
-	CategoryID int64
-}
-
 // CreateCategoryCommand is a command to create a new category.
 type CreateCategoryCommand struct {
 	Name                 string
@@ -129,7 +120,7 @@ func (s *categoryService) CreateCategory(ctx context.Context, cmd *CreateCategor
 	category.RootDisplayOrder = cmd.RootDisplayOrder
 	category.TaxCode = cmd.TaxCode
 
-	err := s.categoryRepo.Save(ctx, category)
+	err := s.categoryRepo.Create(ctx, category)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save category: %w", err)
 	}
@@ -209,7 +200,7 @@ func (s *categoryService) UpdateCategory(ctx context.Context, cmd *UpdateCategor
 		category.TaxCode = *cmd.TaxCode
 	}
 
-	err = s.categoryRepo.Save(ctx, category)
+	err = s.categoryRepo.Update(ctx, category)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update category: %w", err)
 	}
@@ -227,7 +218,7 @@ func (s *categoryService) ArchiveCategory(ctx context.Context, id int64) error {
 	}
 
 	category.Archive()
-	err = s.categoryRepo.Save(ctx, category)
+	err = s.categoryRepo.Update(ctx, category)
 	if err != nil {
 		return fmt.Errorf("failed to archive category: %w", err)
 	}
@@ -240,11 +231,11 @@ func (s *categoryService) UnarchiveCategory(ctx context.Context, id int64) error
 		return fmt.Errorf("failed to find category by ID for unarchiving: %w", err)
 	}
 	if category == nil {
-		return nil, fmt.Errorf("category with ID %d not found for unarchiving", id)
+		return fmt.Errorf("category with ID %d not found for unarchiving", id)
 	}
 
 	category.Unarchive()
-	err = s.categoryRepo.Save(ctx, category)
+	err = s.categoryRepo.Update(ctx, category)
 	if err != nil {
 		return fmt.Errorf("failed to unarchive category: %w", err)
 	}
@@ -270,7 +261,7 @@ func (s *categoryService) SetDefaultParentCategory(ctx context.Context, category
 	}
 
 	category.SetParentCategory(parentCategoryID)
-	err = s.categoryRepo.Save(ctx, category)
+	err = s.categoryRepo.Update(ctx, category)
 	if err != nil {
 		return fmt.Errorf("failed to set parent category: %w", err)
 	}
@@ -287,7 +278,7 @@ func (s *categoryService) RemoveDefaultParentCategory(ctx context.Context, categ
 	}
 
 	category.RemoveDefaultParentCategory()
-	err = s.categoryRepo.Save(ctx, category)
+	err = s.categoryRepo.Update(ctx, category)
 	if err != nil {
 		return fmt.Errorf("failed to remove default parent category: %w", err)
 	}

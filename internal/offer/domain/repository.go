@@ -12,6 +12,9 @@ type OfferRepository interface {
 	// FindByID retrieves an offer by its unique identifier.
 	FindByID(ctx context.Context, id int64) (*Offer, error)
 
+	// FindAll retrieves all offers based on a filter.
+	FindAll(ctx context.Context, filter *OfferFilter) ([]*Offer, error)
+
 	// FindActiveOffers retrieves all currently active offers.
 	FindActiveOffers(ctx context.Context) ([]*Offer, error)
 
@@ -86,6 +89,9 @@ type OfferPriceDataRepository interface {
 
 	// Delete removes offer price data by its unique identifier.
 	Delete(ctx context.Context, id int64) error
+
+	// DeleteByOfferID removes all offer price data associated with a given offer ID.
+	DeleteByOfferID(ctx context.Context, offerID int64) error
 }
 
 // QualCritOfferXrefRepository provides an interface for managing QualCritOfferXref (qualifying criteria for offers).

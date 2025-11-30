@@ -24,6 +24,9 @@ type ProductRepository interface {
 	// FindByURLKey retrieves a product by URL key
 	FindByURLKey(ctx context.Context, urlKey string) (*Product, error)
 
+	// FindByCategoryID retrieves products by category ID
+	FindByCategoryID(ctx context.Context, categoryID int64, filter *ProductFilter) ([]*Product, int64, error)
+
 	// FindAll retrieves all products with pagination
 	FindAll(ctx context.Context, filter *ProductFilter) ([]*Product, int64, error)
 

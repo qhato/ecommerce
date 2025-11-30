@@ -2,6 +2,9 @@ package queries
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/qhato/ecommerce/internal/customer/application"
 	"github.com/qhato/ecommerce/internal/customer/domain"
@@ -56,22 +59,29 @@ func NewCustomerQueryHandler(
 func (h *CustomerQueryHandler) HandleGetCustomerByID(ctx context.Context, query *GetCustomerByIDQuery) (*application.CustomerDTO, error) {
 	// Try to get from cache first
 	cacheKey := customerCacheKey(query.ID)
-	var customer *domain.Customer
-
-	if err := h.cache.Get(ctx, cacheKey, &customer); err == nil && customer != nil {
-		h.logger.Debug("customer found in cache", "customer_id", query.ID)
-		return application.ToCustomerDTO(customer), nil
+	cached, err := h.cache.Get(ctx, cacheKey)
+	if err == nil && cached != nil {
+		var customer *domain.Customer
+		if err := json.Unmarshal(cached, &customer); err == nil {
+			h.logger.WithField("customer_id", query.ID).Debug("customer found in cache")
+			return application.ToCustomerDTO(customer), nil
+		}
 	}
 
 	// Get from repository
 	customer, err := h.repo.FindByID(ctx, query.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "customer not found")
+		return nil, errors.NotFound("customer not found")
 	}
 
 	// Cache the result
-	if err := h.cache.Set(ctx, cacheKey, customer, cache.DefaultTTL); err != nil {
-		h.logger.Warn("failed to cache customer", "error", err, "customer_id", query.ID)
+	serialized, err := json.Marshal(customer)
+	if err == nil {
+		if err := h.cache.Set(ctx, cacheKey, serialized, 5*time.Minute); err != nil {
+			h.logger.WithError(err).WithField("customer_id", query.ID).Warn("failed to cache customer")
+		}
+	} else {
+		h.logger.WithError(err).WithField("customer_id", query.ID).Warn("failed to serialize customer for caching")
 	}
 
 	return application.ToCustomerDTO(customer), nil
@@ -81,13 +91,18 @@ func (h *CustomerQueryHandler) HandleGetCustomerByID(ctx context.Context, query 
 func (h *CustomerQueryHandler) HandleGetCustomerByEmail(ctx context.Context, query *GetCustomerByEmailQuery) (*application.CustomerDTO, error) {
 	customer, err := h.repo.FindByEmail(ctx, query.Email)
 	if err != nil {
-		return nil, errors.Wrap(err, "customer not found")
+		return nil, errors.NotFound("customer not found")
 	}
 
 	// Cache the result
 	cacheKey := customerCacheKey(customer.ID)
-	if err := h.cache.Set(ctx, cacheKey, customer, cache.DefaultTTL); err != nil {
-		h.logger.Warn("failed to cache customer", "error", err, "customer_id", customer.ID)
+	serialized, err := json.Marshal(customer)
+	if err == nil {
+		if err := h.cache.Set(ctx, cacheKey, serialized, 5*time.Minute); err != nil {
+			h.logger.WithError(err).WithField("customer_id", customer.ID).Warn("failed to cache customer")
+		}
+	} else {
+		h.logger.WithError(err).WithField("customer_id", customer.ID).Warn("failed to serialize customer for caching")
 	}
 
 	return application.ToCustomerDTO(customer), nil
@@ -124,7 +139,7 @@ func (h *CustomerQueryHandler) HandleListCustomers(ctx context.Context, query *L
 	// Get from repository
 	customers, total, err := h.repo.FindAll(ctx, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list customers")
+		return nil, errors.InternalWrap(err, "failed to list customers")
 	}
 
 	// Convert to DTOs
@@ -136,13 +151,15 @@ func (h *CustomerQueryHandler) HandleListCustomers(ctx context.Context, query *L
 	return application.NewPaginatedResponse(customerDTOs, query.Page, query.PageSize, total), nil
 }
 
-// customerCacheKey generates a cache key for a customer
-func customerCacheKey(id int64) string {
-	return cache.Key("customer", "customer", id)
+// InvalidateCache invalidates the cache for a specific customer ID.
+func (h *CustomerQueryHandler) InvalidateCache(ctx context.Context, customerID int64) {
+	cacheKey := customerCacheKey(customerID)
+	if err := h.cache.Delete(ctx, cacheKey); err != nil {
+		h.logger.WithError(err).WithField("customer_id", customerID).Warn("failed to invalidate customer cache")
+	}
 }
 
-// PaginatedResponse represents a paginated response (reusing from catalog)
-type PaginatedResponse = application.PaginatedResponse
-
-// NewPaginatedResponse creates a new paginated response
-var NewPaginatedResponse = application.NewPaginatedResponse
+// customerCacheKey generates a cache key for a customer
+func customerCacheKey(id int64) string {
+	return fmt.Sprintf("customer:%d", id)
+}

@@ -69,20 +69,6 @@ func (r *PostgresCategoryRepository) Create(ctx context.Context, category *domai
 		return errors.InternalWrap(err, "failed to create category")
 	}
 
-	// Insert attributes
-	if len(category.Attributes) > 0 {
-		if err := r.insertAttributes(ctx, category.ID, category.Attributes); err != nil {
-			return err
-		}
-	}
-
-	// Insert parent categories (xref)
-	if len(category.ParentCategories) > 0 {
-		if err := r.insertParentCategories(ctx, category.ID, category.ParentCategories); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -117,10 +103,6 @@ func (r *PostgresCategoryRepository) Update(ctx context.Context, category *domai
 		archivedFlag = "Y"
 	}
 
-	// Check rows affected via Pool().Exec if needed, but for now relying on error
-	// Or use a separate select to verify existence if critical
-	// Assuming update successful if no error
-	// If we really need rows affected, we need to use r.db.Pool().Exec
 	tag, err := r.db.Pool().Exec(ctx, query,
 		category.ActiveEndDate,
 		category.ActiveStartDate,
@@ -150,28 +132,6 @@ func (r *PostgresCategoryRepository) Update(ctx context.Context, category *domai
 
 	if tag.RowsAffected() == 0 {
 		return errors.NotFound("category not found")
-	}
-
-	// Update attributes
-	if err := r.deleteAttributes(ctx, category.ID); err != nil {
-		return err
-	}
-
-	if len(category.Attributes) > 0 {
-		if err := r.insertAttributes(ctx, category.ID, category.Attributes); err != nil {
-			return err
-		}
-	}
-
-	// Update parent categories (xref)
-	if err := r.deleteParentCategories(ctx, category.ID); err != nil {
-		return err
-	}
-
-	if len(category.ParentCategories) > 0 {
-		if err := r.insertParentCategories(ctx, category.ID, category.ParentCategories); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -252,20 +212,6 @@ func (r *PostgresCategoryRepository) FindByID(ctx context.Context, id int64) (*d
 	if parentID.Valid {
 		category.DefaultParentCategoryID = &parentID.Int64
 	}
-
-	// Load attributes
-	attributes, err := r.findAttributes(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	category.Attributes = attributes
-
-	// Load parent categories
-	parentCategories, err := r.findParentCategories(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	category.ParentCategories = parentCategories
 
 	return category, nil
 }
@@ -493,105 +439,6 @@ func (r *PostgresCategoryRepository) GetCategoryPath(ctx context.Context, catego
 	}
 
 	return path, nil
-}
-
-// Helper methods
-
-func (r *PostgresCategoryRepository) insertAttributes(ctx context.Context, categoryID int64, attributes []domain.CategoryAttribute) error {
-	query := `
-		INSERT INTO blc_category_attribute (category_attribute_id, name, value, category_id)
-		VALUES (nextval('blc_category_attribute_seq'), $1, $2, $3)`
-
-	for _, attr := range attributes {
-		err := r.db.Exec(ctx, query, attr.Name, attr.Value, categoryID)
-		if err != nil {
-			return errors.InternalWrap(err, "failed to insert category attribute")
-		}
-	}
-
-	return nil
-}
-
-func (r *PostgresCategoryRepository) deleteAttributes(ctx context.Context, categoryID int64) error {
-	query := `DELETE FROM blc_category_attribute WHERE category_id = $1`
-	err := r.db.Exec(ctx, query, categoryID)
-	if err != nil {
-		return errors.InternalWrap(err, "failed to delete category attributes")
-	}
-	return nil
-}
-
-func (r *PostgresCategoryRepository) findAttributes(ctx context.Context, categoryID int64) ([]domain.CategoryAttribute, error) {
-	query := `
-		SELECT category_attribute_id, name, value, category_id
-		FROM blc_category_attribute
-		WHERE category_id = $1`
-
-	rows, err := r.db.Query(ctx, query, categoryID)
-	if err != nil {
-		return nil, errors.InternalWrap(err, "failed to find category attributes")
-	}
-	defer rows.Close()
-
-	var attributes []domain.CategoryAttribute
-	for rows.Next() {
-		var attr domain.CategoryAttribute
-		if err := rows.Scan(&attr.ID, &attr.Name, &attr.Value, &attr.CategoryID); err != nil {
-			return nil, errors.InternalWrap(err, "failed to scan category attribute")
-		}
-		attributes = append(attributes, attr)
-	}
-
-	return attributes, nil
-}
-
-func (r *PostgresCategoryRepository) insertParentCategories(ctx context.Context, categoryID int64, parents []domain.Category) error {
-	query := `
-		INSERT INTO blc_category_xref (category_xref_id, category_id, sub_category_id)
-		VALUES (nextval('blc_category_xref_seq'), $1, $2)`
-
-	for _, parent := range parents {
-		err := r.db.Exec(ctx, query, parent.ID, categoryID)
-		if err != nil {
-			return errors.InternalWrap(err, "failed to insert category xref")
-		}
-	}
-
-	return nil
-}
-
-func (r *PostgresCategoryRepository) deleteParentCategories(ctx context.Context, categoryID int64) error {
-	query := `DELETE FROM blc_category_xref WHERE sub_category_id = $1`
-	err := r.db.Exec(ctx, query, categoryID)
-	if err != nil {
-		return errors.InternalWrap(err, "failed to delete category xrefs")
-	}
-	return nil
-}
-
-func (r *PostgresCategoryRepository) findParentCategories(ctx context.Context, categoryID int64) ([]domain.Category, error) {
-	query := `
-		SELECT c.category_id, c.name, c.url, c.url_key
-		FROM blc_category c
-		JOIN blc_category_xref x ON c.category_id = x.category_id
-		WHERE x.sub_category_id = $1`
-
-	rows, err := r.db.Query(ctx, query, categoryID)
-	if err != nil {
-		return nil, errors.InternalWrap(err, "failed to find parent categories")
-	}
-	defer rows.Close()
-
-	var categories []domain.Category
-	for rows.Next() {
-		var c domain.Category
-		if err := rows.Scan(&c.ID, &c.Name, &c.URL, &c.URLKey); err != nil {
-			return nil, errors.InternalWrap(err, "failed to scan parent category")
-		}
-		categories = append(categories, c)
-	}
-
-	return categories, nil
 }
 
 func (r *PostgresCategoryRepository) buildWhereClause(filter *domain.CategoryFilter) string {

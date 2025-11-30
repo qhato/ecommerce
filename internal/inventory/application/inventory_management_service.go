@@ -12,15 +12,15 @@ import (
 // InventoryManagementService manages inventory reservations and levels
 type InventoryManagementService struct {
 	levelRepo domain.InventoryRepository // Existing repo
-	eventBus  event.EventBus
-	log       logger.Logger
+	eventBus  event.Bus
+	log       *logger.Logger
 }
 
 // NewInventoryManagementService creates a new inventory management service
 func NewInventoryManagementService(
 	levelRepo domain.InventoryRepository,
-	eventBus event.EventBus,
-	log logger.Logger,
+	eventBus event.Bus,
+	log *logger.Logger,
 ) *InventoryManagementService {
 	return &InventoryManagementService{
 		levelRepo: levelRepo,

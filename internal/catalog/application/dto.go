@@ -28,6 +28,21 @@ type ProductDTO struct {
 	UpdatedAt             time.Time         `json:"updated_at"`
 }
 
+// ProductAttributeDTO represents a product attribute data transfer object.
+type ProductAttributeDTO struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Value     string `json:"value"`
+	ProductID int64  `json:"product_id"`
+}
+
+// ProductOptionXrefDTO represents a product option cross-reference data transfer object.
+type ProductOptionXrefDTO struct {
+	ID              int64 `json:"id"`
+	ProductID       int64 `json:"product_id"`
+	ProductOptionID int64 `json:"product_option_id"`
+}
+
 // CategoryDTO represents a category data transfer object
 type CategoryDTO struct {
 	ID                      int64             `json:"id"`
@@ -57,8 +72,25 @@ type CategoryDTO struct {
 	UpdatedAt               time.Time         `json:"updated_at"`
 }
 
-// SKUDTO represents a SKU data transfer object
-type SKUDTO struct {
+// CategoryAttributeDTO represents a category attribute data transfer object
+type CategoryAttributeDTO struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	Value      string `json:"value"`
+	CategoryID int64  `json:"category_id"`
+}
+
+// CategoryProductXrefDTO represents a category product cross-reference data transfer object.
+type CategoryProductXrefDTO struct {
+	ID               int64   `json:"id"`
+	CategoryID       int64   `json:"category_id"`
+	ProductID        int64   `json:"product_id"`
+	DefaultReference bool    `json:"default_reference"`
+	DisplayOrder     float64 `json:"display_order"`
+}
+
+// SkuDTO represents a SKU data transfer object
+type SkuDTO struct {
 	ID                     int64             `json:"id"`
 	Name                   string            `json:"name"`
 	Description            string            `json:"description,omitempty"`
@@ -100,12 +132,25 @@ type SKUDTO struct {
 	UpdatedAt              time.Time         `json:"updated_at"`
 }
 
+// SkuAttributeDTO represents a SKU attribute data transfer object.
+type SkuAttributeDTO struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	SKUID int64  `json:"sku_id"`
+}
+
+// SkuProductOptionValueXrefDTO represents a SKU product option value cross-reference data transfer object.
+type SkuProductOptionValueXrefDTO struct {
+	ID                   int64 `json:"id"`
+	SKUID                int64 `json:"sku_id"`
+	ProductOptionValueID int64 `json:"product_option_value_id"`
+}
+
 // ToProductDTO converts a domain Product to ProductDTO
 func ToProductDTO(product *domain.Product) *ProductDTO {
-	attributes := make(map[string]string)
-	for _, attr := range product.Attributes {
-		attributes[attr.Name] = attr.Value
-	}
+	// Attributes are fetched separately
+	var attributes map[string]string
 
 	return &ProductDTO{
 		ID:                    product.ID,
@@ -113,7 +158,7 @@ func ToProductDTO(product *domain.Product) *ProductDTO {
 		CanSellWithoutOptions: product.CanSellWithoutOptions,
 		CanonicalURL:          product.CanonicalURL,
 		DisplayTemplate:       product.DisplayTemplate,
-		EnableDefaultSKU:      product.EnableDefaultSKU,
+		EnableDefaultSKU:      product.EnableDefaultSKUInInventory,
 		Manufacture:           product.Manufacture,
 		MetaDescription:       product.MetaDescription,
 		MetaTitle:             product.MetaTitle,
@@ -122,7 +167,7 @@ func ToProductDTO(product *domain.Product) *ProductDTO {
 		URL:                   product.URL,
 		URLKey:                product.URLKey,
 		DefaultCategoryID:     product.DefaultCategoryID,
-		DefaultSKUID:          product.DefaultSKUID,
+		DefaultSKUID:          product.DefaultSkuID,
 		Attributes:            attributes,
 		CreatedAt:             product.CreatedAt,
 		UpdatedAt:             product.UpdatedAt,
@@ -131,10 +176,8 @@ func ToProductDTO(product *domain.Product) *ProductDTO {
 
 // ToCategoryDTO converts a domain Category to CategoryDTO
 func ToCategoryDTO(category *domain.Category) *CategoryDTO {
-	attributes := make(map[string]string)
-	for _, attr := range category.Attributes {
-		attributes[attr.Name] = attr.Value
-	}
+	// Attributes are fetched separately
+	var attributes map[string]string
 
 	return &CategoryDTO{
 		ID:                      category.ID,
@@ -165,14 +208,17 @@ func ToCategoryDTO(category *domain.Category) *CategoryDTO {
 	}
 }
 
-// ToSKUDTO converts a domain SKU to SKUDTO
-func ToSKUDTO(sku *domain.SKU) *SKUDTO {
-	attributes := make(map[string]string)
-	for _, attr := range sku.Attributes {
-		attributes[attr.Name] = attr.Value
+// ToSkuDTO converts a domain SKU to SkuDTO
+func ToSkuDTO(sku *domain.SKU) *SkuDTO {
+	// Attributes are fetched separately
+	var attributes map[string]string
+
+	effectivePrice := sku.RetailPrice
+	if sku.SalePrice > 0 {
+		effectivePrice = sku.SalePrice
 	}
 
-	return &SKUDTO{
+	return &SkuDTO{
 		ID:                     sku.ID,
 		Name:                   sku.Name,
 		Description:            sku.Description,
@@ -194,11 +240,11 @@ func ToSKUDTO(sku *domain.SKU) *SKUDTO {
 		FulfillmentType:        sku.FulfillmentType,
 		InventoryType:          sku.InventoryType,
 		IsMachineSortable:      sku.IsMachineSortable,
-		OverrideGeneratedURL:   sku.OverrideGeneratedURL,
-		Price:                  sku.Price,
+		// OverrideGeneratedURL:   sku.OverrideGeneratedURL, // Does not exist on SKU
+		Price:                  sku.RetailPrice,
 		RetailPrice:            sku.RetailPrice,
 		SalePrice:              sku.SalePrice,
-		EffectivePrice:         sku.GetEffectivePrice(),
+		EffectivePrice:         effectivePrice,
 		Taxable:                sku.Taxable,
 		TaxCode:                sku.TaxCode,
 		UPC:                    sku.UPC,
@@ -212,6 +258,55 @@ func ToSKUDTO(sku *domain.SKU) *SKUDTO {
 		IsActive:               sku.IsActive(),
 		CreatedAt:              sku.CreatedAt,
 		UpdatedAt:              sku.UpdatedAt,
+	}
+}
+
+// ToProductAttributeDTO converts a domain ProductAttribute to ProductAttributeDTO
+func ToProductAttributeDTO(attribute *domain.ProductAttribute) *ProductAttributeDTO {
+	return &ProductAttributeDTO{
+		ID:        attribute.ID,
+		Name:      attribute.Name,
+		Value:     attribute.Value,
+		ProductID: attribute.ProductID,
+	}
+}
+
+// ToProductOptionXrefDTO converts a domain ProductOptionXref to ProductOptionXrefDTO
+func ToProductOptionXrefDTO(xref *domain.ProductOptionXref) *ProductOptionXrefDTO {
+	return &ProductOptionXrefDTO{
+		ID:              xref.ID,
+		ProductID:       xref.ProductID,
+		ProductOptionID: xref.ProductOptionID,
+	}
+}
+
+// ToCategoryProductXrefDTO converts a domain CategoryProductXref to CategoryProductXrefDTO
+func ToCategoryProductXrefDTO(xref *domain.CategoryProductXref) *CategoryProductXrefDTO {
+	return &CategoryProductXrefDTO{
+		ID:               xref.ID,
+		CategoryID:       xref.CategoryID,
+		ProductID:        xref.ProductID,
+		DefaultReference: xref.DefaultReference,
+		DisplayOrder:     xref.DisplayOrder,
+	}
+}
+
+// ToSkuAttributeDTO converts a domain SKUAttribute to SkuAttributeDTO
+func ToSkuAttributeDTO(attribute *domain.SKUAttribute) *SkuAttributeDTO {
+	return &SkuAttributeDTO{
+		ID:    attribute.ID,
+		Name:  attribute.Name,
+		Value: attribute.Value,
+		SKUID: attribute.SKUID,
+	}
+}
+
+// ToSkuProductOptionValueXrefDTO converts a domain SkuProductOptionValueXref to SkuProductOptionValueXrefDTO
+func ToSkuProductOptionValueXrefDTO(xref *domain.SkuProductOptionValueXref) *SkuProductOptionValueXrefDTO {
+	return &SkuProductOptionValueXrefDTO{
+		ID:                   xref.ID,
+		SKUID:                xref.SKUID,
+		ProductOptionValueID: xref.ProductOptionValueID,
 	}
 }
 

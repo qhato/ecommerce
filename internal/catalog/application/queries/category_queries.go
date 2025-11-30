@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/application"
 	"github.com/qhato/ecommerce/internal/catalog/domain"
@@ -111,10 +112,9 @@ func (h *CategoryQueryHandler) HandleGetCategoryByID(ctx context.Context, query 
 func (h *CategoryQueryHandler) HandleGetCategoryByURL(ctx context.Context, query *GetCategoryByURLQuery) (*application.CategoryDTO, error) {
 	category, err := h.repo.FindByURL(ctx, query.URL)
 	if err != nil {
-		return nil, errors.Wrap(err, "category not found")
+		return nil, errors.InternalWrap(err, "category not found")
 	}
 
-	// Cache the result
 	// Cache the result
 	cacheKey := categoryCacheKey(category.ID)
 	if data, err := json.Marshal(category); err == nil {
@@ -267,4 +267,6 @@ func (h *CategoryQueryHandler) HandleGetCategoryPath(ctx context.Context, query 
 }
 
 // categoryCacheKey generates a cache key for a category
+func categoryCacheKey(id int64) string {
 	return fmt.Sprintf("catalog:category:%d", id)
+}

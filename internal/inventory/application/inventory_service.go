@@ -10,62 +10,44 @@ import (
 
 // InventoryService defines the application service for inventory-related operations.
 type InventoryService interface {
-	// CreateSKUAvailability creates a new SKU availability record.
-	CreateSKUAvailability(ctx context.Context, cmd *CreateSKUAvailabilityCommand) (*SKUAvailabilityDTO, error)
-
-	// GetSKUAvailabilityByID retrieves a SKU availability record by its ID.
-	GetSKUAvailabilityByID(ctx context.Context, id int64) (*SKUAvailabilityDTO, error)
-
-	// GetSKUAvailabilityBySKUID retrieves a SKU availability record by SKU ID.
-	GetSKUAvailabilityBySKUID(ctx context.Context, skuID int64) (*SKUAvailabilityDTO, error)
-
-	// UpdateSKUAvailabilityQuantities updates the quantities for a SKU availability record.
-	UpdateSKUAvailabilityQuantities(ctx context.Context, id int64, qtyOnHand, reserveQty int) (*SKUAvailabilityDTO, error)
-
-	// UpdateSKUAvailabilityStatus updates the status for a SKU availability record.
-	UpdateSKUAvailabilityStatus(ctx context.Context, id int64, newStatus string) (*SKUAvailabilityDTO, error)
-
-	// SetSKUAvailabilityLocation sets the location for a SKU availability record.
-	SetSKUAvailabilityLocation(ctx context.Context, id int64, locationID int64) (*SKUAvailabilityDTO, error)
-
-	// SetSKUAvailabilityDate sets the availability date for a SKU availability record.
-	SetSKUAvailabilityDate(ctx context.Context, id int64, date *time.Time) (*SKUAvailabilityDTO, error)
-
-	// DeleteSKUAvailability deletes a SKU availability record by its ID.
-	DeleteSKUAvailability(ctx context.Context, id int64) error
+	CreateInventoryLevel(ctx context.Context, cmd *CreateInventoryLevelCommand) (*InventoryLevelDTO, error)
+	GetInventoryLevelByID(ctx context.Context, id string) (*InventoryLevelDTO, error)
+	GetInventoryLevelBySKUID(ctx context.Context, skuID string) (*InventoryLevelDTO, error)
+	IncrementInventory(ctx context.Context, id string, quantity int) (*InventoryLevelDTO, error)
+	DecrementInventory(ctx context.Context, id string, quantity int) (*InventoryLevelDTO, error)
+	ReserveInventory(ctx context.Context, id string, quantity int) (*InventoryLevelDTO, error)
+	ReleaseInventory(ctx context.Context, id string, quantity int) (*InventoryLevelDTO, error)
+	UpdateInventoryQuantities(ctx context.Context, id string, quantityOnHand, quantityReserved int) (*InventoryLevelDTO, error)
+	DeleteInventoryLevel(ctx context.Context, id string) error
 }
 
-// SKUAvailabilityDTO represents a SKU availability data transfer object.
-type SKUAvailabilityDTO struct {
-	ID                 int64
-	SkuID              int64
-	AvailabilityDate   *time.Time
-	AvailabilityStatus string
-	LocationID         *int64
-	QtyOnHand          int
-	ReserveQty         int
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+// InventoryLevelDTO represents a SKU availability data transfer object.
+type InventoryLevelDTO struct {
+	ID                  string
+	SKUID               string
+	WarehouseID         *string
+	LocationID          *string
+	QuantityAvailable   int
+	QuantityReserved    int
+	QuantityOnHand      int
+	QuantityAllocated   int
+	QuantityBackordered int
+	QuantityInTransit   int
+	QuantityDamaged     int
+	ReorderPoint        int
+	ReorderQuantity     int
+	SafetyStock         int
+	AllowBackorder      bool
+	AllowPreorder       bool
+	LastCountDate       *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
-// CreateSKUAvailabilityCommand is a command to create a new SKUAvailability.
-type CreateSKUAvailabilityCommand struct {
-	SkuID              int64
-	QtyOnHand          int
-	ReserveQty         int
-	AvailabilityStatus string
-	AvailabilityDate   *time.Time
-	LocationID         *int64
-}
-
-// UpdateSKUAvailabilityCommand is a command to update an existing SKUAvailability.
-type UpdateSKUAvailabilityCommand struct {
-	ID                 int64
-	QtyOnHand          *int
-	ReserveQty         *int
-	AvailabilityStatus *string
-	AvailabilityDate   *time.Time
-	LocationID         *int64
+// CreateInventoryLevelCommand is a command to create a new SKUAvailability.
+type CreateInventoryLevelCommand struct {
+	SKUID          string
+	QuantityOnHand int
 }
 
 type inventoryService struct {
@@ -79,138 +61,170 @@ func NewInventoryService(inventoryRepo domain.InventoryRepository) InventoryServ
 	}
 }
 
-func (s *inventoryService) CreateSKUAvailability(ctx context.Context, cmd *CreateSKUAvailabilityCommand) (*SKUAvailabilityDTO, error) {
-	availability, err := domain.NewSKUAvailability(cmd.SkuID, cmd.QtyOnHand, cmd.ReserveQty, cmd.AvailabilityStatus)
+func (s *inventoryService) CreateInventoryLevel(ctx context.Context, cmd *CreateInventoryLevelCommand) (*InventoryLevelDTO, error) {
+	level, err := domain.NewInventoryLevel(cmd.SKUID, cmd.QuantityOnHand)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SKU availability domain entity: %w", err)
+		return nil, fmt.Errorf("failed to create inventory level domain entity: %w", err)
 	}
 
-	if cmd.AvailabilityDate != nil {
-		availability.SetAvailabilityDate(cmd.AvailabilityDate)
-	}
-	if cmd.LocationID != nil {
-		availability.SetLocation(*cmd.LocationID)
-	}
-
-	err = s.inventoryRepo.Save(ctx, availability)
+	err = s.inventoryRepo.Save(ctx, level)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save SKU availability: %w", err)
+		return nil, fmt.Errorf("failed to save inventory level: %w", err)
 	}
 
-	return toSKUAvailabilityDTO(availability), nil
+	return toInventoryLevelDTO(level), nil
 }
 
-func (s *inventoryService) GetSKUAvailabilityByID(ctx context.Context, id int64) (*SKUAvailabilityDTO, error) {
-	availability, err := s.inventoryRepo.FindByID(ctx, id)
+func (s *inventoryService) GetInventoryLevelByID(ctx context.Context, id string) (*InventoryLevelDTO, error) {
+	level, err := s.inventoryRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find SKU availability by ID: %w", err)
+		return nil, fmt.Errorf("failed to find inventory level by ID: %w", err)
 	}
-	if availability == nil {
-		return nil, fmt.Errorf("SKU availability with ID %d not found", id)
+	if level == nil {
+		return nil, fmt.Errorf("inventory level with ID %s not found", id)
 	}
-	return toSKUAvailabilityDTO(availability), nil
+	return toInventoryLevelDTO(level), nil
 }
 
-func (s *inventoryService) GetSKUAvailabilityBySKUID(ctx context.Context, skuID int64) (*SKUAvailabilityDTO, error) {
-	availability, err := s.inventoryRepo.FindBySKUID(ctx, skuID)
+func (s *inventoryService) GetInventoryLevelBySKUID(ctx context.Context, skuID string) (*InventoryLevelDTO, error) {
+	level, err := s.inventoryRepo.FindBySKUID(ctx, skuID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find SKU availability by SKU ID: %w", err)
+		return nil, fmt.Errorf("failed to find inventory level by SKU ID: %w", err)
 	}
-	if availability == nil {
-		return nil, fmt.Errorf("SKU availability for SKU ID %d not found", skuID)
+	if level == nil {
+		return nil, fmt.Errorf("inventory level for SKU ID %s not found", skuID)
 	}
-	return toSKUAvailabilityDTO(availability), nil
+	return toInventoryLevelDTO(level), nil
 }
 
-func (s *inventoryService) UpdateSKUAvailabilityQuantities(ctx context.Context, id int64, qtyOnHand, reserveQty int) (*SKUAvailabilityDTO, error) {
-	availability, err := s.inventoryRepo.FindByID(ctx, id)
+func (s *inventoryService) IncrementInventory(ctx context.Context, id string, quantity int) (*InventoryLevelDTO, error) {
+	level, err := s.inventoryRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find SKU availability by ID for update: %w", err)
+		return nil, fmt.Errorf("failed to find inventory level by ID for update: %w", err)
 	}
-	if availability == nil {
-		return nil, fmt.Errorf("SKU availability with ID %d not found for update", id)
+	if level == nil {
+		return nil, fmt.Errorf("inventory level with ID %s not found for update", id)
 	}
 
-	err = availability.UpdateQuantities(qtyOnHand, reserveQty)
+	err = level.Increment(quantity)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update quantities for SKU availability: %w", err)
+		return nil, fmt.Errorf("failed to increment inventory: %w", err)
 	}
-	err = s.inventoryRepo.Save(ctx, availability)
+	err = s.inventoryRepo.Save(ctx, level)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save SKU availability after quantity update: %w", err)
+		return nil, fmt.Errorf("failed to save inventory level after increment: %w", err)
 	}
-	return toSKUAvailabilityDTO(availability), nil
+	return toInventoryLevelDTO(level), nil
 }
 
-func (s *inventoryService) UpdateSKUAvailabilityStatus(ctx context.Context, id int64, newStatus string) (*SKUAvailabilityDTO, error) {
-	availability, err := s.inventoryRepo.FindByID(ctx, id)
+func (s *inventoryService) DecrementInventory(ctx context.Context, id string, quantity int) (*InventoryLevelDTO, error) {
+	level, err := s.inventoryRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find SKU availability by ID for update: %w", err)
+		return nil, fmt.Errorf("failed to find inventory level by ID for update: %w", err)
 	}
-	if availability == nil {
-		return nil, fmt.Errorf("SKU availability with ID %d not found for update", id)
+	if level == nil {
+		return nil, fmt.Errorf("inventory level with ID %s not found for update", id)
 	}
 
-	availability.UpdateStatus(newStatus)
-	err = s.inventoryRepo.Save(ctx, availability)
+	err = level.Decrement(quantity)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save SKU availability after status update: %w", err)
+		return nil, fmt.Errorf("failed to decrement inventory: %w", err)
 	}
-	return toSKUAvailabilityDTO(availability), nil
+	err = s.inventoryRepo.Save(ctx, level)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save inventory level after decrement: %w", err)
+	}
+	return toInventoryLevelDTO(level), nil
 }
 
-func (s *inventoryService) SetSKUAvailabilityLocation(ctx context.Context, id int64, locationID int64) (*SKUAvailabilityDTO, error) {
-	availability, err := s.inventoryRepo.FindByID(ctx, id)
+func (s *inventoryService) ReserveInventory(ctx context.Context, id string, quantity int) (*InventoryLevelDTO, error) {
+	level, err := s.inventoryRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find SKU availability by ID for update: %w", err)
+		return nil, fmt.Errorf("failed to find inventory level by ID for update: %w", err)
 	}
-	if availability == nil {
-		return nil, fmt.Errorf("SKU availability with ID %d not found for update", id)
+	if level == nil {
+		return nil, fmt.Errorf("inventory level with ID %s not found for update", id)
 	}
 
-	availability.SetLocation(locationID)
-	err = s.inventoryRepo.Save(ctx, availability)
+	err = level.Reserve(quantity)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save SKU availability after location update: %w", err)
+		return nil, fmt.Errorf("failed to reserve inventory: %w", err)
 	}
-	return toSKUAvailabilityDTO(availability), nil
+	err = s.inventoryRepo.Save(ctx, level)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save inventory level after reservation: %w", err)
+	}
+	return toInventoryLevelDTO(level), nil
 }
 
-func (s *inventoryService) SetSKUAvailabilityDate(ctx context.Context, id int64, date *time.Time) (*SKUAvailabilityDTO, error) {
-	availability, err := s.inventoryRepo.FindByID(ctx, id)
+func (s *inventoryService) ReleaseInventory(ctx context.Context, id string, quantity int) (*InventoryLevelDTO, error) {
+	level, err := s.inventoryRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find SKU availability by ID for update: %w", err)
+		return nil, fmt.Errorf("failed to find inventory level by ID for update: %w", err)
 	}
-	if availability == nil {
-		return nil, fmt.Errorf("SKU availability with ID %d not found for update", id)
+	if level == nil {
+		return nil, fmt.Errorf("inventory level with ID %s not found for update", id)
 	}
 
-	availability.SetAvailabilityDate(date)
-	err = s.inventoryRepo.Save(ctx, availability)
+	err = level.Release(quantity)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save SKU availability after date update: %w", err)
+		return nil, fmt.Errorf("failed to release inventory: %w", err)
 	}
-	return toSKUAvailabilityDTO(availability), nil
+	err = s.inventoryRepo.Save(ctx, level)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save inventory level after release: %w", err)
+	}
+	return toInventoryLevelDTO(level), nil
 }
 
-func (s *inventoryService) DeleteSKUAvailability(ctx context.Context, id int64) error {
+func (s *inventoryService) DeleteInventoryLevel(ctx context.Context, id string) error {
 	err := s.inventoryRepo.Delete(ctx, id)
 	if err != nil {
-		return fmt.Errorf("failed to delete SKU availability: %w", err)
+		return fmt.Errorf("failed to delete inventory level: %w", err)
 	}
 	return nil
 }
 
-func toSKUAvailabilityDTO(availability *domain.SKUAvailability) *SKUAvailabilityDTO {
-	return &SKUAvailabilityDTO{
-		ID:                 availability.ID,
-		SkuID:              availability.SkuID,
-		AvailabilityDate:   availability.AvailabilityDate,
-		AvailabilityStatus: availability.AvailabilityStatus,
-		LocationID:         availability.LocationID,
-		QtyOnHand:          availability.QtyOnHand,
-		ReserveQty:         availability.ReserveQty,
-		CreatedAt:          availability.CreatedAt,
-		UpdatedAt:          availability.UpdatedAt,
+func (s *inventoryService) UpdateInventoryQuantities(ctx context.Context, id string, quantityOnHand, quantityReserved int) (*InventoryLevelDTO, error) {
+	level, err := s.inventoryRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find inventory level by ID for update: %w", err)
+	}
+	if level == nil {
+		return nil, fmt.Errorf("inventory level with ID %s not found for update", id)
+	}
+
+	level.QuantityOnHand = quantityOnHand
+	level.QuantityReserved = quantityReserved
+	level.UpdatedAt = time.Now() // Update timestamp
+
+	err = s.inventoryRepo.Save(ctx, level)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save inventory level after quantity update: %w", err)
+	}
+	return toInventoryLevelDTO(level), nil
+}
+
+func toInventoryLevelDTO(level *domain.InventoryLevel) *InventoryLevelDTO {
+	return &InventoryLevelDTO{
+		ID:                  level.ID,
+		SKUID:               level.SKUID,
+		WarehouseID:         level.WarehouseID,
+		LocationID:          level.LocationID,
+		QuantityAvailable:   level.QuantityAvailable,
+		QuantityReserved:    level.QuantityReserved,
+		QuantityOnHand:      level.QuantityOnHand,
+		QuantityAllocated:   level.QuantityAllocated,
+		QuantityBackordered: level.QuantityBackordered,
+		QuantityInTransit:   level.QuantityInTransit,
+		QuantityDamaged:     level.QuantityDamaged,
+		ReorderPoint:        level.ReorderPoint,
+		ReorderQuantity:     level.ReorderQuantity,
+		SafetyStock:         level.SafetyStock,
+		AllowBackorder:      level.AllowBackorder,
+		AllowPreorder:       level.AllowPreorder,
+		LastCountDate:       level.LastCountDate,
+		CreatedAt:           level.CreatedAt,
+		UpdatedAt:           level.UpdatedAt,
 	}
 }

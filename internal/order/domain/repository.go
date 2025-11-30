@@ -104,16 +104,6 @@ type FulfillmentGroupRepository interface {
 	DeleteByOrderID(ctx context.Context, orderID int64) error
 }
 
-// OrderFilter represents filtering options for orders
-type OrderFilter struct {
-	Page       int
-	PageSize   int
-	Status     OrderStatus
-	CustomerID int64
-	SortBy     string
-	SortOrder  string
-}
-
 // OrderItemFilter represents filtering options for order items
 type OrderItemFilter struct {
 	Page      int

@@ -211,3 +211,30 @@ func OrderNotEditable(orderID string, status string) *AppError {
 	).WithDetail("order_id", orderID).
 		WithDetail("status", status)
 }
+
+// IsConflict checks if the error is a conflict error
+func IsConflict(err error) bool {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		return appErr.Code == ErrCodeConflict
+	}
+	return false
+}
+
+// IsNotFound checks if the error is a not found error
+func IsNotFound(err error) bool {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		return appErr.Code == ErrCodeNotFound
+	}
+	return false
+}
+
+// IsUnauthorized checks if the error is an unauthorized error
+func IsUnauthorized(err error) bool {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		return appErr.Code == ErrCodeUnauthorized
+	}
+	return false
+}

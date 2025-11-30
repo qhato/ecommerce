@@ -5,17 +5,20 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/qhato/ecommerce/internal/customer/domain"
+	"github.com/qhato/ecommerce/pkg/database"
 	"github.com/qhato/ecommerce/pkg/errors"
 )
 
 // PostgresCustomerRepository implements the CustomerRepository interface using PostgreSQL
 type PostgresCustomerRepository struct {
-	db *sql.DB
+	db *database.DB
 }
 
 // NewPostgresCustomerRepository creates a new PostgresCustomerRepository
-func NewPostgresCustomerRepository(db *sql.DB) *PostgresCustomerRepository {
+func NewPostgresCustomerRepository(db *database.DB) *PostgresCustomerRepository {
 	return &PostgresCustomerRepository{db: db}
 }
 
@@ -31,7 +34,7 @@ func (r *PostgresCustomerRepository) Create(ctx context.Context, customer *domai
 		RETURNING customer_id
 	`
 
-	err := r.db.QueryRowContext(ctx, query,
+	err := r.db.QueryRow(ctx, query,
 		customer.Archived,
 		customer.ChallengeAnswer,
 		customer.Deactivated,
@@ -74,7 +77,8 @@ func (r *PostgresCustomerRepository) Update(ctx context.Context, customer *domai
 		WHERE customer_id = $20
 	`
 
-	result, err := r.db.ExecContext(ctx, query,
+	// Using Pool().Exec to get RowsAffected
+	tag, err := r.db.Pool().Exec(ctx, query,
 		customer.Archived,
 		customer.ChallengeAnswer,
 		customer.Deactivated,
@@ -101,11 +105,7 @@ func (r *PostgresCustomerRepository) Update(ctx context.Context, customer *domai
 		return errors.InternalWrap(err, "failed to update customer")
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return errors.InternalWrap(err, "failed to get rows affected")
-	}
-	if rowsAffected == 0 {
+	if tag.RowsAffected() == 0 {
 		return errors.NotFound(fmt.Sprintf("customer %d", customer.ID))
 	}
 
@@ -135,7 +135,7 @@ func (r *PostgresCustomerRepository) FindByID(ctx context.Context, id int64) (*d
 		updatedBy           sql.NullInt64
 	)
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRow(ctx, query, id).Scan(
 		&customer.ID,
 		&customer.Archived,
 		&challengeAnswer,
@@ -160,7 +160,7 @@ func (r *PostgresCustomerRepository) FindByID(ctx context.Context, id int64) (*d
 		&customer.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
@@ -222,7 +222,7 @@ func (r *PostgresCustomerRepository) FindByEmail(ctx context.Context, email stri
 		updatedBy           sql.NullInt64
 	)
 
-	err := r.db.QueryRowContext(ctx, query, email).Scan(
+	err := r.db.QueryRow(ctx, query, email).Scan(
 		&customer.ID,
 		&customer.Archived,
 		&challengeAnswer,
@@ -247,7 +247,7 @@ func (r *PostgresCustomerRepository) FindByEmail(ctx context.Context, email stri
 		&customer.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
@@ -309,7 +309,7 @@ func (r *PostgresCustomerRepository) FindByUsername(ctx context.Context, usernam
 		updatedBy           sql.NullInt64
 	)
 
-	err := r.db.QueryRowContext(ctx, query, username).Scan(
+	err := r.db.QueryRow(ctx, query, username).Scan(
 		&customer.ID,
 		&customer.Archived,
 		&challengeAnswer,
@@ -334,7 +334,7 @@ func (r *PostgresCustomerRepository) FindByUsername(ctx context.Context, usernam
 		&customer.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
@@ -390,36 +390,28 @@ func (r *PostgresCustomerRepository) FindAll(ctx context.Context, filter *domain
 
 	// Add filters
 	if filter != nil {
-		if filter.Deactivated != nil {
-			query += fmt.Sprintf(" AND deactivated = $%d", argIndex)
-			args = append(args, *filter.Deactivated)
-			argIndex++
+		if filter.ActiveOnly {
+			query += " AND deactivated = false"
 		}
-		if filter.Archived != nil {
-			query += fmt.Sprintf(" AND archived = $%d", argIndex)
-			args = append(args, *filter.Archived)
-			argIndex++
+		if !filter.IncludeArchived {
+			query += " AND archived = false"
 		}
 	}
 
 	// Count total
 	countQuery := "SELECT COUNT(*) FROM blc_customer WHERE 1=1"
 	countArgs := make([]interface{}, 0)
-	countArgIndex := 1
 	if filter != nil {
-		if filter.Deactivated != nil {
-			countQuery += fmt.Sprintf(" AND deactivated = $%d", countArgIndex)
-			countArgs = append(countArgs, *filter.Deactivated)
-			countArgIndex++
+		if filter.ActiveOnly {
+			countQuery += " AND deactivated = false"
 		}
-		if filter.Archived != nil {
-			countQuery += fmt.Sprintf(" AND archived = $%d", countArgIndex)
-			countArgs = append(countArgs, *filter.Archived)
+		if !filter.IncludeArchived {
+			countQuery += " AND archived = false"
 		}
 	}
 
 	var total int64
-	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+	err := r.db.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
 	if err != nil {
 		return nil, 0, errors.InternalWrap(err, "failed to count customers")
 	}
@@ -441,7 +433,7 @@ func (r *PostgresCustomerRepository) FindAll(ctx context.Context, filter *domain
 		args = append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
 	}
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, 0, errors.InternalWrap(err, "failed to find customers")
 	}
@@ -531,7 +523,7 @@ func (r *PostgresCustomerRepository) FindAll(ctx context.Context, filter *domain
 func (r *PostgresCustomerRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	query := "SELECT EXISTS(SELECT 1 FROM blc_customer WHERE email_address = $1)"
 	var exists bool
-	err := r.db.QueryRowContext(ctx, query, email).Scan(&exists)
+	err := r.db.QueryRow(ctx, query, email).Scan(&exists)
 	if err != nil {
 		return false, errors.InternalWrap(err, "failed to check customer by email")
 	}
@@ -542,9 +534,34 @@ func (r *PostgresCustomerRepository) ExistsByEmail(ctx context.Context, email st
 func (r *PostgresCustomerRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	query := "SELECT EXISTS(SELECT 1 FROM blc_customer WHERE user_name = $1)"
 	var exists bool
-	err := r.db.QueryRowContext(ctx, query, username).Scan(&exists)
+	err := r.db.QueryRow(ctx, query, username).Scan(&exists)
 	if err != nil {
 		return false, errors.InternalWrap(err, "failed to check customer by username")
 	}
 	return exists, nil
+}
+
+func (r *PostgresCustomerRepository) UpdatePassword(ctx context.Context, customerID int64, hashedPassword string) error {
+	query := `UPDATE blc_customer SET password = $1 WHERE customer_id = $2`
+	tag, err := r.db.Pool().Exec(ctx, query, hashedPassword, customerID)
+	if err != nil {
+		return errors.InternalWrap(err, "failed to update password")
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound(fmt.Sprintf("customer %d", customerID))
+	}
+	return nil
+}
+
+// Delete soft deletes a customer by setting the archived flag.
+func (r *PostgresCustomerRepository) Delete(ctx context.Context, id int64) error {
+	query := `UPDATE blc_customer SET archived = true WHERE customer_id = $1`
+	tag, err := r.db.Pool().Exec(ctx, query, id)
+	if err != nil {
+		return errors.InternalWrap(err, "failed to soft delete customer")
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound(fmt.Sprintf("customer %d", id))
+	}
+	return nil
 }

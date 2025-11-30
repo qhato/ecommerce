@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/application"
 	"github.com/qhato/ecommerce/internal/catalog/domain"
@@ -239,4 +240,6 @@ func (h *ProductQueryHandler) HandleSearchProducts(ctx context.Context, query *S
 }
 
 // productCacheKey generates a cache key for a product
+func productCacheKey(id int64) string {
 	return fmt.Sprintf("catalog:product:%d", id)
+}

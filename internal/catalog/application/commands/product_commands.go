@@ -59,6 +59,7 @@ type ArchiveProductCommand struct {
 // ProductCommandHandler handles product commands
 type ProductCommandHandler struct {
 	repo      domain.ProductRepository
+	attrRepo  domain.ProductAttributeRepository
 	eventBus  event.Bus
 	validator *validator.Validator
 	logger    *logger.Logger
@@ -67,12 +68,14 @@ type ProductCommandHandler struct {
 // NewProductCommandHandler creates a new product command handler
 func NewProductCommandHandler(
 	repo domain.ProductRepository,
+	attrRepo domain.ProductAttributeRepository,
 	eventBus event.Bus,
 	validator *validator.Validator,
 	logger *logger.Logger,
 ) *ProductCommandHandler {
 	return &ProductCommandHandler{
 		repo:      repo,
+		attrRepo:  attrRepo,
 		eventBus:  eventBus,
 		validator: validator,
 		logger:    logger,
@@ -102,19 +105,27 @@ func (h *ProductCommandHandler) HandleCreateProduct(ctx context.Context, cmd *Cr
 	product.MetaDescription = cmd.MetaDescription
 	product.MetaTitle = cmd.MetaTitle
 	product.OverrideGeneratedURL = cmd.OverrideGeneratedURL
-	product.DefaultCategoryID = cmd.DefaultCategoryID
-
-	// Add attributes
-	if cmd.Attributes != nil {
-		for name, value := range cmd.Attributes {
-			product.AddAttribute(name, value)
-		}
+	if cmd.DefaultCategoryID != nil {
+		product.SetDefaultCategory(*cmd.DefaultCategoryID)
 	}
 
 	// Save to repository
 	if err := h.repo.Create(ctx, product); err != nil {
 		h.logger.WithError(err).Error("failed to create product")
 		return 0, errors.InternalWrap(err, "failed to create product")
+	}
+
+	// Add attributes
+	if cmd.Attributes != nil {
+		for name, value := range cmd.Attributes {
+			attr, err := domain.NewProductAttribute(product.ID, name, value)
+			if err != nil {
+				return 0, err
+			}
+			if err := h.attrRepo.Save(ctx, attr); err != nil {
+				return 0, errors.InternalWrap(err, "failed to save product attribute")
+			}
+		}
 	}
 
 	// Publish domain event
@@ -176,7 +187,13 @@ func (h *ProductCommandHandler) HandleUpdateProduct(ctx context.Context, cmd *Up
 	// Update attributes
 	if cmd.Attributes != nil {
 		for name, value := range cmd.Attributes {
-			product.UpdateAttribute(name, value)
+			attr, err := domain.NewProductAttribute(product.ID, name, value)
+			if err != nil {
+				return err
+			}
+			if err := h.attrRepo.Save(ctx, attr); err != nil {
+				return errors.InternalWrap(err, "failed to save product attribute")
+			}
 		}
 		changes["attributes"] = true
 	}
@@ -207,7 +224,7 @@ func (h *ProductCommandHandler) HandleDeleteProduct(ctx context.Context, cmd *De
 	}
 
 	// Check if product exists
-	product, err := h.repo.FindByID(ctx, cmd.ID)
+	_, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
 		return errors.InternalWrap(err, "product not found")
 	}
@@ -219,7 +236,7 @@ func (h *ProductCommandHandler) HandleDeleteProduct(ctx context.Context, cmd *De
 	}
 
 	// Publish domain event
-	event := domain.NewProductArchivedEvent(product.ID)
+	event := domain.NewProductArchivedEvent(cmd.ID)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
 		h.logger.WithError(err).Error("failed to publish product archived event")
 	}

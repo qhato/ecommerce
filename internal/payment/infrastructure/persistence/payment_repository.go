@@ -8,16 +8,17 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/qhato/ecommerce/internal/payment/domain"
+	"github.com/qhato/ecommerce/pkg/database"
 	"github.com/qhato/ecommerce/pkg/errors"
 )
 
 // PostgresPaymentRepository implements the PaymentRepository interface using PostgreSQL
 type PostgresPaymentRepository struct {
-	db *sql.DB
+	db *database.DB
 }
 
 // NewPostgresPaymentRepository creates a new PostgresPaymentRepository
-func NewPostgresPaymentRepository(db *sql.DB) *PostgresPaymentRepository {
+func NewPostgresPaymentRepository(db *database.DB) *PostgresPaymentRepository {
 	return &PostgresPaymentRepository{db: db}
 }
 
@@ -71,7 +72,8 @@ func (r *PostgresPaymentRepository) Update(ctx context.Context, payment *domain.
 		WHERE payment_id = $16
 	`
 
-	err := r.db.Exec(ctx, query,
+	// Using Pool().Exec to get RowsAffected
+	tag, err := r.db.Pool().Exec(ctx, query,
 		payment.OrderID,
 		payment.CustomerID,
 		payment.PaymentMethod,
@@ -94,36 +96,6 @@ func (r *PostgresPaymentRepository) Update(ctx context.Context, payment *domain.
 		return errors.InternalWrap(err, "failed to update payment")
 	}
 
-	// pgx.Exec returns error directly, not Result
-	// We can't easily check RowsAffected with Exec helper, but we can assume success if no error
-	// Or we can use r.db.Pool().Exec if we need RowsAffected
-	// For now, let's assume if no error, it updated.
-	// But wait, the original code checked RowsAffected.
-	// The DB wrapper Exec returns error only.
-	// If we need RowsAffected, we should use r.db.Pool().Exec(ctx, ...)
-	// We can't easily check RowsAffected with Exec helper, but we can assume success if no error
-	// Or we can use r.db.Pool().Exec if we need RowsAffected
-	tag, err := r.db.Pool().Exec(ctx, query,
-		payment.OrderID,
-		payment.CustomerID,
-		payment.PaymentMethod,
-		payment.Amount,
-		payment.CurrencyCode,
-		payment.TransactionID,
-		payment.GatewayResponse,
-		payment.AuthorizationCode,
-		payment.RefundAmount,
-		payment.FailureReason,
-		payment.ProcessedDate,
-		payment.AuthorizedDate,
-		payment.CapturedDate,
-		payment.RefundedDate,
-		payment.UpdatedAt,
-		payment.ID,
-	)
-	if err != nil {
-		return errors.InternalWrap(err, "failed to get rows affected")
-	}
 	if tag.RowsAffected() == 0 {
 		return errors.NotFound(fmt.Sprintf("payment %d", payment.ID))
 	}
@@ -449,7 +421,7 @@ func (r *PostgresPaymentRepository) FindAll(ctx context.Context, filter *domain.
 		args = append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
 	}
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, 0, errors.InternalWrap(err, "failed to find all payments")
 	}

@@ -2,126 +2,171 @@ package queries
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json" // Added json import
 	"fmt"
 	"time"
 
+	"github.com/qhato/ecommerce/internal/order/application" // Import order application package
 	"github.com/qhato/ecommerce/internal/order/domain"
 	"github.com/qhato/ecommerce/pkg/cache"
-	"github.com/qhato/ecommerce/pkg/errors"
 	"github.com/qhato/ecommerce/pkg/logger"
 )
 
-// OrderQueryHandler handles order queries
+// GetOrderByIDQuery represents a query to get an order by ID.
+type GetOrderByIDQuery struct {
+	ID int64 `json:"id" validate:"required"`
+}
+
+// ListOrdersQuery represents a query to list orders with filters.
+type ListOrdersQuery struct {
+	Page       int               `json:"page" validate:"min=1"`
+	PageSize   int               `json:"page_size" validate:"min=1,max=100"`
+	CustomerID *int64            `json:"customer_id,omitempty"`
+	Status     *domain.OrderStatus `json:"status,omitempty"`
+	SortBy     string            `json:"sort_by"`
+	SortOrder  string            `json:"sort_order"`
+}
+
+// GetOrderByOrderNumberQuery represents a query to get an order by order number.
+type GetOrderByOrderNumberQuery struct {
+	OrderNumber string `json:"order_number" validate:"required"`
+}
+
+// OrderQueryHandler handles order-related queries.
 type OrderQueryHandler struct {
-	repo  domain.OrderRepository
-	cache cache.Cache
-	log   *logger.Logger
+	orderService application.OrderService // Dependency on the application service
+	cache        cache.Cache
+	logger       *logger.Logger
 }
 
-// NewOrderQueryHandler creates a new OrderQueryHandler
-func NewOrderQueryHandler(repo domain.OrderRepository, cache cache.Cache, log *logger.Logger) *OrderQueryHandler {
+// NewOrderQueryHandler creates a new OrderQueryHandler.
+func NewOrderQueryHandler(
+	orderService application.OrderService,
+	cache cache.Cache,
+	logger *logger.Logger,
+) *OrderQueryHandler {
 	return &OrderQueryHandler{
-		repo:  repo,
-		cache: cache,
-		log:   log,
+		orderService: orderService,
+		cache:        cache,
+		logger:       logger,
 	}
 }
 
-// GetByID retrieves an order by ID
-func (h *OrderQueryHandler) GetByID(ctx context.Context, id int64) (*domain.Order, error) {
-	h.log.Debug("Fetching order by ID", "id", id)
-
-	// Try cache first
-	cacheKey := fmt.Sprintf("order:id:%d", id)
-	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && cached != "" {
-		var order domain.Order
-		if err := json.Unmarshal([]byte(cached), &order); err == nil {
-			h.log.Debug("Order found in cache", "id", id)
-			return &order, nil
+// HandleGetOrderByID handles the GetOrderByIDQuery.
+func (h *OrderQueryHandler) HandleGetOrderByID(ctx context.Context, query *GetOrderByIDQuery) (*application.OrderDTO, error) {
+	// Try to get from cache first
+	cacheKey := orderCacheKey(query.ID)
+	cached, err := h.cache.Get(ctx, cacheKey)
+	if err == nil && cached != nil {
+		var orderDTO application.OrderDTO
+		if err := json.Unmarshal(cached, &orderDTO); err == nil {
+			h.logger.WithField("order_id", query.ID).Debug("order found in cache")
+			return &orderDTO, nil
 		}
 	}
 
-	// Fetch from repository
-	order, err := h.repo.FindByID(ctx, id)
+	orderDTO, err := h.orderService.HandleGetOrderByID(ctx, query.ID)
 	if err != nil {
-		h.log.Error("Failed to fetch order by ID", "error", err)
 		return nil, err
 	}
-	if order == nil {
-		return nil, errors.NotFound(fmt.Sprintf("order %d", id))
+
+	// Cache the result
+	serialized, err := json.Marshal(orderDTO)
+	if err == nil {
+		if err := h.cache.Set(ctx, cacheKey, serialized, 5*time.Minute); err != nil {
+			h.logger.WithError(err).WithField("order_id", query.ID).Warn("failed to cache order")
+		}
+	} else {
+		h.logger.WithError(err).WithField("order_id", query.ID).Warn("failed to serialize order for caching")
 	}
 
-	// Cache result
-	if data, err := json.Marshal(order); err == nil {
-		_ = h.cache.Set(ctx, cacheKey, string(data), 5*time.Minute)
-	}
-
-	return order, nil
+	return orderDTO, nil
 }
 
-// GetByOrderNumber retrieves an order by order number
-func (h *OrderQueryHandler) GetByOrderNumber(ctx context.Context, orderNumber string) (*domain.Order, error) {
-	h.log.Debug("Fetching order by order number", "orderNumber", orderNumber)
-
-	// Try cache first
-	cacheKey := fmt.Sprintf("order:number:%s", orderNumber)
-	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && cached != "" {
-		var order domain.Order
-		if err := json.Unmarshal([]byte(cached), &order); err == nil {
-			h.log.Debug("Order found in cache", "orderNumber", orderNumber)
-			return &order, nil
+// HandleGetOrderByOrderNumber handles the GetOrderByOrderNumberQuery.
+func (h *OrderQueryHandler) HandleGetOrderByOrderNumber(ctx context.Context, query *GetOrderByOrderNumberQuery) (*application.OrderDTO, error) {
+	// Try to get from cache first (using order number as key)
+	cacheKey := orderCacheKeyByNumber(query.OrderNumber)
+	cached, err := h.cache.Get(ctx, cacheKey)
+	if err == nil && cached != nil {
+		var orderDTO application.OrderDTO
+		if err := json.Unmarshal(cached, &orderDTO); err == nil {
+			h.logger.WithField("order_number", query.OrderNumber).Debug("order found in cache by number")
+			return &orderDTO, nil
 		}
 	}
 
-	// Fetch from repository
-	order, err := h.repo.FindByOrderNumber(ctx, orderNumber)
+	// Get from repository
+	orderDTO, err := h.orderService.GetOrderByOrderNumber(ctx, query.OrderNumber) // Assuming GetOrderByOrderNumber method exists in OrderService
 	if err != nil {
-		h.log.Error("Failed to fetch order by order number", "error", err)
 		return nil, err
 	}
-	if order == nil {
-		return nil, errors.NotFound(fmt.Sprintf("order with number %s", orderNumber))
+
+	// Cache the result
+	serialized, err := json.Marshal(orderDTO)
+	if err == nil {
+		if err := h.cache.Set(ctx, cacheKey, serialized, 5*time.Minute); err != nil {
+			h.logger.WithError(err).WithField("order_number", query.OrderNumber).Warn("failed to cache order by number")
+		}
+	} else {
+		h.logger.WithError(err).WithField("order_number", query.OrderNumber).Warn("failed to serialize order for caching by number")
 	}
 
-	// Cache result
-	if data, err := json.Marshal(order); err == nil {
-		_ = h.cache.Set(ctx, cacheKey, string(data), 5*time.Minute)
-	}
-
-	return order, nil
+	return orderDTO, nil
 }
 
-// ListByCustomer retrieves orders for a customer
-func (h *OrderQueryHandler) ListByCustomer(ctx context.Context, customerID int64, filter *domain.OrderFilter) ([]*domain.Order, int64, error) {
-	h.log.Debug("Fetching orders by customer", "customerID", customerID)
+// HandleListOrders handles the ListOrdersQuery.
+func (h *OrderQueryHandler) HandleListOrders(ctx context.Context, query *ListOrdersQuery) (*application.PaginatedResponse, error) {
+	// Set defaults
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 {
+		query.PageSize = 20
+	}
+	if query.SortBy == "" {
+		query.SortBy = "created_at"
+	}
+	if query.SortOrder == "" {
+		query.SortOrder = "desc"
+	}
 
-	orders, total, err := h.repo.FindByCustomerID(ctx, customerID, filter)
+	filter := &domain.OrderFilter{
+		Page:       query.Page,
+		PageSize:   query.PageSize,
+		CustomerID: query.CustomerID,
+		Status:     query.Status,
+		SortBy:     query.SortBy,
+		SortOrder:  query.SortOrder,
+	}
+
+	orders, total, err := h.orderService.ListOrders(ctx, filter) // Assuming ListOrders method exists in OrderService
 	if err != nil {
-		h.log.Error("Failed to fetch orders by customer", "error", err)
-		return nil, 0, err
+		return nil, err
 	}
 
-	return orders, total, nil
-}
-
-// List retrieves all orders with optional filtering
-func (h *OrderQueryHandler) List(ctx context.Context, filter *domain.OrderFilter) ([]*domain.Order, int64, error) {
-	h.log.Debug("Fetching all orders with filter", "filter", filter)
-
-	orders, total, err := h.repo.FindAll(ctx, filter)
-	if err != nil {
-		h.log.Error("Failed to fetch orders", "error", err)
-		return nil, 0, err
+	orderDTOs := make([]application.OrderDTO, len(orders))
+	for i, order := range orders {
+		orderDTOs[i] = *application.ToOrderDTO(order)
 	}
 
-	return orders, total, nil
+	return application.NewPaginatedResponse(orderDTOs, query.Page, query.PageSize, total), nil
 }
 
-// InvalidateCache invalidates the cache for an order
-func (h *OrderQueryHandler) InvalidateCache(ctx context.Context, orderID int64, orderNumber string) {
-	cacheKey1 := fmt.Sprintf("order:id:%d", orderID)
-	cacheKey2 := fmt.Sprintf("order:number:%s", orderNumber)
-	_ = h.cache.Delete(ctx, cacheKey1)
-	_ = h.cache.Delete(ctx, cacheKey2)
+// InvalidateCache invalidates the cache for a specific order ID.
+func (h *OrderQueryHandler) InvalidateCache(ctx context.Context, orderID int64) {
+	cacheKey := orderCacheKey(orderID)
+	if err := h.cache.Delete(ctx, cacheKey); err != nil {
+		h.logger.WithError(err).WithField("order_id", orderID).Warn("failed to invalidate order cache")
+	}
+}
+
+// orderCacheKey generates a cache key for an order.
+func orderCacheKey(id int64) string {
+	return fmt.Sprintf("order:%d", id)
+}
+
+// orderCacheKeyByNumber generates a cache key for an order by its order number.
+func orderCacheKeyByNumber(orderNumber string) string {
+	return fmt.Sprintf("order:number:%s", orderNumber)
 }

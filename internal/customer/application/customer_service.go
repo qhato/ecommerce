@@ -13,15 +13,6 @@ type CustomerService interface {
 	// Other customer-related methods
 }
 
-// CustomerDTO represents customer data transfer object.
-type CustomerDTO struct {
-	ID        int64
-	FirstName string
-	LastName  string
-	Email     string
-	// Other relevant customer details
-}
-
 // UpdateCustomerCommand is a command to update customer details.
 type UpdateCustomerCommand struct {
 	ID        int64
@@ -42,10 +33,10 @@ func (s *customerService) GetCustomerByID(ctx context.Context, customerID int64)
 	// Mock implementation
 	if customerID == 1 {
 		return &CustomerDTO{
-			ID:        1,
-			FirstName: "John",
-			LastName:  "Doe",
-			Email:     "john.doe@example.com",
+			ID:           1,
+			FirstName:    "John",
+			LastName:     "Doe",
+			EmailAddress: "john.doe@example.com",
 		}, nil
 	}
 	return nil, fmt.Errorf("customer with ID %d not found (mock)", customerID)
@@ -55,10 +46,10 @@ func (s *customerService) UpdateCustomer(ctx context.Context, cmd *UpdateCustome
 	// Mock implementation
 	if cmd.ID == 1 {
 		return &CustomerDTO{
-			ID:        1,
-			FirstName: "John",
-			LastName:  "Doe",
-			Email:     "john.doe@example.com",
+			ID:           1,
+			FirstName:    "John",
+			LastName:     "Doe",
+			EmailAddress: "john.doe@example.com",
 		}, nil
 	}
 	return nil, fmt.Errorf("customer with ID %d not found (mock)", cmd.ID)

@@ -62,7 +62,7 @@ func (r *PostgresProductRepository) Create(ctx context.Context, product *domain.
 		product.CanSellWithoutOptions,
 		product.CanonicalURL,
 		product.DisplayTemplate,
-		product.EnableDefaultSKU,
+		product.EnableDefaultSKUInInventory,
 		product.Manufacture,
 		product.MetaDescription,
 		product.MetaTitle,
@@ -71,18 +71,11 @@ func (r *PostgresProductRepository) Create(ctx context.Context, product *domain.
 		product.URL,
 		product.URLKey,
 		product.DefaultCategoryID,
-		product.DefaultSKUID,
+		product.DefaultSkuID,
 	).Scan(&product.ID)
 
 	if err != nil {
 		return errors.InternalWrap(err, "failed to create product")
-	}
-
-	// 3. Insertar Atributos (si existen)
-	if len(product.Attributes) > 0 {
-		if err := r.insertAttributes(ctx, tx, product.ID, product.Attributes); err != nil {
-			return err
-		}
 	}
 
 	// 4. Commit Transacción
@@ -131,7 +124,7 @@ func (r *PostgresProductRepository) Update(ctx context.Context, product *domain.
 		product.CanSellWithoutOptions,
 		product.CanonicalURL,
 		product.DisplayTemplate,
-		product.EnableDefaultSKU,
+		product.EnableDefaultSKUInInventory,
 		product.Manufacture,
 		product.MetaDescription,
 		product.MetaTitle,
@@ -140,7 +133,7 @@ func (r *PostgresProductRepository) Update(ctx context.Context, product *domain.
 		product.URL,
 		product.URLKey,
 		product.DefaultCategoryID,
-		product.DefaultSKUID,
+		product.DefaultSkuID,
 		product.ID,
 	)
 
@@ -150,17 +143,6 @@ func (r *PostgresProductRepository) Update(ctx context.Context, product *domain.
 
 	if tag.RowsAffected() == 0 {
 		return errors.NotFound("product not found")
-	}
-
-	// 3. Actualizar Atributos (Estrategia: Eliminar todo e insertar nuevo)
-	if err := r.deleteAttributes(ctx, tx, product.ID); err != nil {
-		return err
-	}
-
-	if len(product.Attributes) > 0 {
-		if err := r.insertAttributes(ctx, tx, product.ID, product.Attributes); err != nil {
-			return err
-		}
 	}
 
 	// 4. Commit Transacción
@@ -209,7 +191,7 @@ func (r *PostgresProductRepository) FindByID(ctx context.Context, id int64) (*do
 		&product.CanSellWithoutOptions,
 		&product.CanonicalURL,
 		&product.DisplayTemplate,
-		&product.EnableDefaultSKU,
+		&product.EnableDefaultSKUInInventory,
 		&product.Manufacture,
 		&product.MetaDescription,
 		&product.MetaTitle,
@@ -233,15 +215,8 @@ func (r *PostgresProductRepository) FindByID(ctx context.Context, id int64) (*do
 		product.DefaultCategoryID = &defaultCategoryID.Int64
 	}
 	if defaultSKUID.Valid {
-		product.DefaultSKUID = &defaultSKUID.Int64
+		product.DefaultSkuID = &defaultSKUID.Int64
 	}
-
-	// Cargar atributos usando la conexión del pool
-	attributes, err := r.findAttributes(ctx, r.db.Pool(), id)
-	if err != nil {
-		return nil, err
-	}
-	product.Attributes = attributes
 
 	return product, nil
 }
@@ -324,16 +299,9 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter *domain.
 	}
 	defer rows.Close()
 
-	products, ids, err := r.scanProducts(rows)
+	products, _, err := r.scanProducts(rows)
 	if err != nil {
 		return nil, 0, err
-	}
-
-	// 3. Eager Loading: Cargar atributos para todos los productos en una sola query
-	if len(ids) > 0 {
-		if err := r.loadAttributesForProducts(ctx, products, ids); err != nil {
-			return nil, 0, err
-		}
 	}
 
 	return products, total, nil
@@ -381,15 +349,9 @@ func (r *PostgresProductRepository) FindByCategoryID(ctx context.Context, catego
 	}
 	defer rows.Close()
 
-	products, ids, err := r.scanProducts(rows)
+	products, _, err := r.scanProducts(rows)
 	if err != nil {
 		return nil, 0, err
-	}
-
-	if len(ids) > 0 {
-		if err := r.loadAttributesForProducts(ctx, products, ids); err != nil {
-			return nil, 0, err
-		}
 	}
 
 	return products, total, nil
@@ -440,15 +402,9 @@ func (r *PostgresProductRepository) Search(ctx context.Context, queryTerm string
 	}
 	defer rows.Close()
 
-	products, ids, err := r.scanProducts(rows)
+	products, _, err := r.scanProducts(rows)
 	if err != nil {
 		return nil, 0, err
-	}
-
-	if len(ids) > 0 {
-		if err := r.loadAttributesForProducts(ctx, products, ids); err != nil {
-			return nil, 0, err
-		}
 	}
 
 	return products, total, nil
@@ -479,57 +435,6 @@ func (r *PostgresProductRepository) RemoveFromCategory(ctx context.Context, prod
 	return nil
 }
 
-// --- Helpers ---
-
-// insertAttributes usa DBTX para soportar transacciones
-func (r *PostgresProductRepository) insertAttributes(ctx context.Context, db DBTX, productID int64, attributes []domain.ProductAttribute) error {
-	query := `
-		INSERT INTO blc_product_attribute (product_attribute_id, name, value, product_id)
-		VALUES (nextval('blc_product_attribute_seq'), $1, $2, $3)`
-
-	for _, attr := range attributes {
-		_, err := db.Exec(ctx, query, attr.Name, attr.Value, productID)
-		if err != nil {
-			return errors.InternalWrap(err, "failed to insert product attribute")
-		}
-	}
-	return nil
-}
-
-// deleteAttributes usa DBTX para soportar transacciones
-func (r *PostgresProductRepository) deleteAttributes(ctx context.Context, db DBTX, productID int64) error {
-	query := `DELETE FROM blc_product_attribute WHERE product_id = $1`
-	_, err := db.Exec(ctx, query, productID)
-	if err != nil {
-		return errors.InternalWrap(err, "failed to delete product attributes")
-	}
-	return nil
-}
-
-// findAttributes busca atributos de un solo producto
-func (r *PostgresProductRepository) findAttributes(ctx context.Context, db DBTX, productID int64) ([]domain.ProductAttribute, error) {
-	query := `
-		SELECT product_attribute_id, name, value, product_id
-		FROM blc_product_attribute
-		WHERE product_id = $1`
-
-	rows, err := db.Query(ctx, query, productID)
-	if err != nil {
-		return nil, errors.InternalWrap(err, "failed to find product attributes")
-	}
-	defer rows.Close()
-
-	var attributes []domain.ProductAttribute
-	for rows.Next() {
-		var attr domain.ProductAttribute
-		if err := rows.Scan(&attr.ID, &attr.Name, &attr.Value, &attr.ProductID); err != nil {
-			return nil, errors.InternalWrap(err, "failed to scan product attribute")
-		}
-		attributes = append(attributes, attr)
-	}
-	return attributes, nil
-}
-
 // scanProducts escanea las filas en objetos Product y retorna también la lista de IDs
 func (r *PostgresProductRepository) scanProducts(rows pgx.Rows) ([]*domain.Product, []int64, error) {
 	var products []*domain.Product
@@ -546,7 +451,7 @@ func (r *PostgresProductRepository) scanProducts(rows pgx.Rows) ([]*domain.Produ
 			&product.CanSellWithoutOptions,
 			&product.CanonicalURL,
 			&product.DisplayTemplate,
-			&product.EnableDefaultSKU,
+			&product.EnableDefaultSKUInInventory,
 			&product.Manufacture,
 			&product.MetaDescription,
 			&product.MetaTitle,
@@ -558,7 +463,7 @@ func (r *PostgresProductRepository) scanProducts(rows pgx.Rows) ([]*domain.Produ
 			&defaultSKUID,
 		)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to scan product")
+			return nil, nil, errors.InternalWrap(err, "failed to scan product")
 		}
 
 		product.Archived = archivedFlag == "Y"
@@ -566,48 +471,13 @@ func (r *PostgresProductRepository) scanProducts(rows pgx.Rows) ([]*domain.Produ
 			product.DefaultCategoryID = &defaultCategoryID.Int64
 		}
 		if defaultSKUID.Valid {
-			product.DefaultSKUID = &defaultSKUID.Int64
+			product.DefaultSkuID = &defaultSKUID.Int64
 		}
-		// Inicializar slices vacíos
-		product.Attributes = make([]domain.ProductAttribute, 0)
-		product.Options = make([]domain.ProductOption, 0)
 
 		products = append(products, product)
 		ids = append(ids, product.ID)
 	}
 	return products, ids, nil
-}
-
-// loadAttributesForProducts carga atributos para una lista de productos en una sola consulta
-func (r *PostgresProductRepository) loadAttributesForProducts(ctx context.Context, products []*domain.Product, ids []int64) error {
-	query := `
-		SELECT product_attribute_id, name, value, product_id
-		FROM blc_product_attribute
-		WHERE product_id = ANY($1)`
-
-	rows, err := r.db.Query(ctx, query, ids)
-	if err != nil {
-		return errors.InternalWrap(err, "failed to batch load product attributes")
-	}
-	defer rows.Close()
-
-	// Mapa para asignación rápida
-	attrMap := make(map[int64][]domain.ProductAttribute)
-	for rows.Next() {
-		var attr domain.ProductAttribute
-		if err := rows.Scan(&attr.ID, &attr.Name, &attr.Value, &attr.ProductID); err != nil {
-			return errors.InternalWrap(err, "failed to scan batched attribute")
-		}
-		attrMap[attr.ProductID] = append(attrMap[attr.ProductID], attr)
-	}
-
-	// Asignar al producto correspondiente
-	for _, p := range products {
-		if attrs, found := attrMap[p.ID]; found {
-			p.Attributes = attrs
-		}
-	}
-	return nil
 }
 
 func (r *PostgresProductRepository) buildOrderByClause(sortBy, sortOrder string) string {

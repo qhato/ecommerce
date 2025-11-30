@@ -55,7 +55,7 @@ func (h *AdminCategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Req
 
 	categoryID, err := h.commandHandler.HandleCreateCategory(r.Context(), &cmd)
 	if err != nil {
-		h.logger.Error("failed to create category", "error", err)
+		h.logger.WithError(err).Error("failed to create category")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -93,7 +93,7 @@ func (h *AdminCategoryHandler) ListCategories(w http.ResponseWriter, r *http.Req
 
 	result, err := h.queryHandler.HandleListCategories(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list categories", "error", err)
+		h.logger.WithError(err).Error("failed to list categories")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -129,7 +129,7 @@ func (h *AdminCategoryHandler) ListRootCategories(w http.ResponseWriter, r *http
 
 	result, err := h.queryHandler.HandleListRootCategories(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list root categories", "error", err)
+		h.logger.WithError(err).Error("failed to list root categories")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -149,7 +149,7 @@ func (h *AdminCategoryHandler) GetCategory(w http.ResponseWriter, r *http.Reques
 	query := &queries.GetCategoryByIDQuery{ID: id}
 	category, err := h.queryHandler.HandleGetCategoryByID(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get category", "error", err, "category_id", id)
+		h.logger.WithError(err).WithField("category_id", id).Error("failed to get category")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -174,7 +174,7 @@ func (h *AdminCategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Req
 	cmd.ID = id
 
 	if err := h.commandHandler.HandleUpdateCategory(r.Context(), &cmd); err != nil {
-		h.logger.Error("failed to update category", "error", err, "category_id", id)
+		h.logger.WithError(err).WithField("category_id", id).Error("failed to update category")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -195,7 +195,7 @@ func (h *AdminCategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Req
 
 	cmd := &commands.DeleteCategoryCommand{ID: id}
 	if err := h.commandHandler.HandleDeleteCategory(r.Context(), cmd); err != nil {
-		h.logger.Error("failed to delete category", "error", err, "category_id", id)
+		h.logger.WithError(err).WithField("category_id", id).Error("failed to delete category")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -241,7 +241,7 @@ func (h *AdminCategoryHandler) ListChildCategories(w http.ResponseWriter, r *htt
 
 	result, err := h.queryHandler.HandleListCategoriesByParent(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list child categories", "error", err, "parent_id", id)
+		h.logger.WithError(err).WithField("parent_id", id).Error("failed to list child categories")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -261,7 +261,7 @@ func (h *AdminCategoryHandler) GetCategoryPath(w http.ResponseWriter, r *http.Re
 	query := &queries.GetCategoryPathQuery{CategoryID: id}
 	path, err := h.queryHandler.HandleGetCategoryPath(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get category path", "error", err, "category_id", id)
+		h.logger.WithError(err).WithField("category_id", id).Error("failed to get category path")
 		pkghttp.RespondError(w, err)
 		return
 	}

@@ -59,7 +59,7 @@ func NewSKUQueryHandler(
 }
 
 // HandleGetSKUByID handles the get SKU by ID query
-func (h *SKUQueryHandler) HandleGetSKUByID(ctx context.Context, query *GetSKUByIDQuery) (*application.SKUDTO, error) {
+func (h *SKUQueryHandler) HandleGetSKUByID(ctx context.Context, query *GetSKUByIDQuery) (*application.SkuDTO, error) {
 	// Try to get from cache first
 	cacheKey := skuCacheKey(query.ID)
 	var sku *domain.SKU
@@ -67,7 +67,7 @@ func (h *SKUQueryHandler) HandleGetSKUByID(ctx context.Context, query *GetSKUByI
 	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && len(cached) > 0 {
 		if err := json.Unmarshal(cached, &sku); err == nil {
 			h.logger.WithField("sku_id", query.ID).Debug("SKU found in cache")
-			return application.ToSKUDTO(sku), nil
+			return application.ToSkuDTO(sku), nil
 		}
 	}
 
@@ -84,11 +84,11 @@ func (h *SKUQueryHandler) HandleGetSKUByID(ctx context.Context, query *GetSKUByI
 		}
 	}
 
-	return application.ToSKUDTO(sku), nil
+	return application.ToSkuDTO(sku), nil
 }
 
 // HandleGetSKUByUPC handles the get SKU by UPC query
-func (h *SKUQueryHandler) HandleGetSKUByUPC(ctx context.Context, query *GetSKUByUPCQuery) (*application.SKUDTO, error) {
+func (h *SKUQueryHandler) HandleGetSKUByUPC(ctx context.Context, query *GetSKUByUPCQuery) (*application.SkuDTO, error) {
 	sku, err := h.repo.FindByUPC(ctx, query.UPC)
 	if err != nil {
 		return nil, errors.InternalWrap(err, "SKU not found")
@@ -102,7 +102,7 @@ func (h *SKUQueryHandler) HandleGetSKUByUPC(ctx context.Context, query *GetSKUBy
 		}
 	}
 
-	return application.ToSKUDTO(sku), nil
+	return application.ToSkuDTO(sku), nil
 }
 
 // HandleListSKUs handles the list SKUs query
@@ -138,16 +138,16 @@ func (h *SKUQueryHandler) HandleListSKUs(ctx context.Context, query *ListSKUsQue
 	}
 
 	// Convert to DTOs
-	skuDTOs := make([]*application.SKUDTO, len(skus))
+	skuDTOs := make([]*application.SkuDTO, len(skus))
 	for i, sku := range skus {
-		skuDTOs[i] = application.ToSKUDTO(sku)
+		skuDTOs[i] = application.ToSkuDTO(sku)
 	}
 
 	return application.NewPaginatedResponse(skuDTOs, query.Page, query.PageSize, total), nil
 }
 
 // HandleListSKUsByProduct handles the list SKUs by product query
-func (h *SKUQueryHandler) HandleListSKUsByProduct(ctx context.Context, query *ListSKUsByProductQuery) ([]*application.SKUDTO, error) {
+func (h *SKUQueryHandler) HandleListSKUsByProduct(ctx context.Context, query *ListSKUsByProductQuery) ([]*application.SkuDTO, error) {
 	// Get from repository
 	skus, err := h.repo.FindByProductID(ctx, query.ProductID)
 	if err != nil {
@@ -155,9 +155,9 @@ func (h *SKUQueryHandler) HandleListSKUsByProduct(ctx context.Context, query *Li
 	}
 
 	// Convert to DTOs
-	skuDTOs := make([]*application.SKUDTO, len(skus))
+	skuDTOs := make([]*application.SkuDTO, len(skus))
 	for i, sku := range skus {
-		skuDTOs[i] = application.ToSKUDTO(sku)
+		skuDTOs[i] = application.ToSkuDTO(sku)
 	}
 
 	return skuDTOs, nil

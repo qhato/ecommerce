@@ -56,7 +56,7 @@ func (h *AdminSKUHandler) CreateSKU(w http.ResponseWriter, r *http.Request) {
 
 	skuID, err := h.commandHandler.HandleCreateSKU(r.Context(), &cmd)
 	if err != nil {
-		h.logger.Error("failed to create SKU", "error", err)
+		h.logger.WithError(err).Error("failed to create SKU")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -94,7 +94,7 @@ func (h *AdminSKUHandler) ListSKUs(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.queryHandler.HandleListSKUs(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list SKUs", "error", err)
+		h.logger.WithError(err).Error("failed to list SKUs")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -114,7 +114,7 @@ func (h *AdminSKUHandler) GetSKU(w http.ResponseWriter, r *http.Request) {
 	query := &queries.GetSKUByIDQuery{ID: id}
 	sku, err := h.queryHandler.HandleGetSKUByID(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get SKU", "error", err, "sku_id", id)
+		h.logger.WithError(err).WithField("sku_id", id).Error("failed to get SKU")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -139,7 +139,7 @@ func (h *AdminSKUHandler) UpdateSKU(w http.ResponseWriter, r *http.Request) {
 	cmd.ID = id
 
 	if err := h.commandHandler.HandleUpdateSKU(r.Context(), &cmd); err != nil {
-		h.logger.Error("failed to update SKU", "error", err, "sku_id", id)
+		h.logger.WithError(err).WithField("sku_id", id).Error("failed to update SKU")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -160,7 +160,7 @@ func (h *AdminSKUHandler) DeleteSKU(w http.ResponseWriter, r *http.Request) {
 
 	cmd := &commands.DeleteSKUCommand{ID: id}
 	if err := h.commandHandler.HandleDeleteSKU(r.Context(), cmd); err != nil {
-		h.logger.Error("failed to delete SKU", "error", err, "sku_id", id)
+		h.logger.WithError(err).WithField("sku_id", id).Error("failed to delete SKU")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -187,7 +187,7 @@ func (h *AdminSKUHandler) UpdateSKUPricing(w http.ResponseWriter, r *http.Reques
 	cmd.ID = id
 
 	if err := h.commandHandler.HandleUpdateSKUPricing(r.Context(), &cmd); err != nil {
-		h.logger.Error("failed to update SKU pricing", "error", err, "sku_id", id)
+		h.logger.WithError(err).WithField("sku_id", id).Error("failed to update SKU pricing")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -214,7 +214,7 @@ func (h *AdminSKUHandler) UpdateSKUAvailability(w http.ResponseWriter, r *http.R
 	cmd.ID = id
 
 	if err := h.commandHandler.HandleUpdateSKUAvailability(r.Context(), &cmd); err != nil {
-		h.logger.Error("failed to update SKU availability", "error", err, "sku_id", id)
+		h.logger.WithError(err).WithField("sku_id", id).Error("failed to update SKU availability")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -235,7 +235,7 @@ func (h *AdminSKUHandler) GetSKUByUPC(w http.ResponseWriter, r *http.Request) {
 	query := &queries.GetSKUByUPCQuery{UPC: upc}
 	sku, err := h.queryHandler.HandleGetSKUByUPC(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get SKU by UPC", "error", err, "upc", upc)
+		h.logger.WithError(err).WithField("upc", upc).Error("failed to get SKU by UPC")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -255,7 +255,7 @@ func (h *AdminSKUHandler) ListSKUsByProduct(w http.ResponseWriter, r *http.Reque
 	query := &queries.ListSKUsByProductQuery{ProductID: productID}
 	skus, err := h.queryHandler.HandleListSKUsByProduct(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list SKUs by product", "error", err, "product_id", productID)
+		h.logger.WithError(err).WithField("product_id", productID).Error("failed to list SKUs by product")
 		pkghttp.RespondError(w, err)
 		return
 	}

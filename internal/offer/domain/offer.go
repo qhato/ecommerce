@@ -60,6 +60,17 @@ type Offer struct {
 	UpdatedAt time.Time
 }
 
+// OfferFilter represents filtering and pagination options for offers
+type OfferFilter struct {
+	Page            int
+	PageSize        int
+	IncludeArchived bool
+	ActiveOnly      bool       // Filter by active offers based on StartDate and EndDate
+	OfferType       *OfferType // Filter by a specific offer type
+	SortBy          string     // "name", "priority", "start_date", "end_date", "created_at"
+	SortOrder       string     // "asc", "desc"
+}
+
 // NewOffer creates a new offer
 func NewOffer(
 	name string,

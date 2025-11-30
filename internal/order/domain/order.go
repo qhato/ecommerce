@@ -6,13 +6,19 @@ import "time"
 type OrderStatus string
 
 const (
-	OrderStatusPending    OrderStatus = "PENDING"
-	OrderStatusProcessing OrderStatus = "PROCESSING"
-	OrderStatusConfirmed  OrderStatus = "CONFIRMED"
-	OrderStatusShipped    OrderStatus = "SHIPPED"
-	OrderStatusDelivered  OrderStatus = "DELIVERED"
-	OrderStatusCancelled  OrderStatus = "CANCELLED"
-	OrderStatusRefunded   OrderStatus = "REFUNDED"
+	OrderStatusPending      OrderStatus = "PENDING"
+	OrderStatusCustomerInfo OrderStatus = "CUSTOMER_INFO"
+	OrderStatusShipping     OrderStatus = "SHIPPING"
+	OrderStatusPayment      OrderStatus = "PAYMENT"
+	OrderStatusReview       OrderStatus = "REVIEW"
+	OrderStatusSubmitted    OrderStatus = "SUBMITTED"
+	OrderStatusProcessing   OrderStatus = "PROCESSING"
+	OrderStatusConfirmed    OrderStatus = "CONFIRMED"
+	OrderStatusShipped      OrderStatus = "SHIPPED"
+	OrderStatusDelivered    OrderStatus = "DELIVERED"
+	OrderStatusCancelled    OrderStatus = "CANCELLED"
+	OrderStatusRefunded     OrderStatus = "REFUNDED"
+	OrderStatusFulfilled    OrderStatus = "FULFILLED"
 )
 
 // Order represents an order entity
@@ -34,6 +40,7 @@ type Order struct {
 	SubmitDate    *time.Time
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	Items         []OrderItem
 }
 
 // NewOrder creates a new order
@@ -54,7 +61,28 @@ func NewOrder(customerID int64, emailAddress, name, currencyCode, localeCode str
 		TaxOverride:   false,
 		CreatedAt:     now,
 		UpdatedAt:     now,
+		Items:         make([]OrderItem, 0),
 	}
+}
+
+// AddItem adds an item to the order
+func (o *Order) AddItem(item OrderItem) {
+	o.Items = append(o.Items, item)
+	o.recalculateSubtotal()
+	o.UpdatedAt = time.Now()
+}
+
+func (o *Order) recalculateSubtotal() {
+	var subtotal float64
+	for _, item := range o.Items {
+		subtotal += item.TotalPrice
+	}
+	o.OrderSubtotal = subtotal
+	o.recalculateTotal()
+}
+
+func (o *Order) recalculateTotal() {
+	o.OrderTotal = o.OrderSubtotal + o.TotalTax + o.TotalShipping
 }
 
 // UpdateStatus updates the order status
@@ -82,6 +110,16 @@ func (o *Order) Cancel() {
 // IsCancellable checks if order can be cancelled
 func (o *Order) IsCancellable() bool {
 	return o.Status == OrderStatusPending || o.Status == OrderStatusProcessing
+}
+
+// OrderFilter represents filtering and pagination options for orders
+type OrderFilter struct {
+	Page       int
+	PageSize   int
+	CustomerID *int64
+	Status     *OrderStatus
+	SortBy     string
+	SortOrder  string
 }
 
 // DomainError represents a business rule validation error within the domain.

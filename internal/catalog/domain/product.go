@@ -54,6 +54,12 @@ func (p *Product) Unarchive() {
 	p.UpdatedAt = time.Now()
 }
 
+// SetDefaultCategory sets the default category for the product
+func (p *Product) SetDefaultCategory(categoryID int64) {
+	p.DefaultCategoryID = &categoryID
+	p.UpdatedAt = time.Now()
+}
+
 // SetDefaultSKU sets the default SKU
 func (p *Product) SetDefaultSKU(skuID int64) {
 	p.DefaultSkuID = &skuID

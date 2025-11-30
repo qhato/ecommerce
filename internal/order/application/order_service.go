@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 
-	"github.com/qhato/ecommerce/internal/catalog/application"
-	"github.com/qhato/ecommerce/internal/inventory/application"
+	catalogApp "github.com/qhato/ecommerce/internal/catalog/application"
+	inventoryApp "github.com/qhato/ecommerce/internal/inventory/application"
 	offerApp "github.com/qhato/ecommerce/internal/offer/application"
 	offerDomain "github.com/qhato/ecommerce/internal/offer/domain"
 	"github.com/qhato/ecommerce/internal/order/domain"
-	"github.com/qhato/ecommerce/internal/tax/application"
+	taxApp "github.com/qhato/ecommerce/internal/tax/application"
 )
 
 // OrderService defines the application service for order-related operations.
@@ -18,8 +19,8 @@ type OrderService interface {
 	// CreateOrder creates a new order.
 	CreateOrder(ctx context.Context, cmd *CreateOrderCommand) (*OrderDTO, error)
 
-	// GetOrderByID retrieves an order by its ID.
-	GetOrderByID(ctx context.Context, id int64) (*OrderDTO, error)
+	// HandleGetOrderByID retrieves an order by its ID.
+	HandleGetOrderByID(ctx context.Context, id int64) (*OrderDTO, error)
 
 	// UpdateOrderStatus updates the status of an existing order.
 	UpdateOrderStatus(ctx context.Context, orderID int64, status domain.OrderStatus) error
@@ -44,120 +45,15 @@ type OrderService interface {
 
 	// CreateFulfillmentGroup creates a new fulfillment group for an order.
 	CreateFulfillmentGroup(ctx context.Context, orderID int64, cmd *CreateFulfillmentGroupCommand) (*FulfillmentGroupDTO, error)
-}
 
-// OrderDTO represents an order data transfer object.
-type OrderDTO struct {
-	ID                      int64
-	OrderNumber             string
-	CustomerID              int64
-	EmailAddress            string
-	Name                    string
-	Status                  domain.OrderStatus
-	OrderSubtotal           float64
-	TotalTax                float64
-	TotalShipping           float64
-	OrderTotal              float64
-	CurrencyCode            string
-	IsPreview               bool
-	TaxOverride             bool
-	LocaleCode              string
-	SubmitDate              *time.Time
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
-	Items                   []*OrderItemDTO           // Include nested DTOs
-	OrderAdjustments        []*OrderAdjustmentDTO     // Include nested DTOs
-	FulfillmentGroups       []*FulfillmentGroupDTO    // Include nested DTOs
-}
+	// UpdateOrderShippingDetails updates the shipping details of an order.
+	UpdateOrderShippingDetails(ctx context.Context, orderID int64, shippingCost float64) error
 
-// OrderItemDTO represents an order item data transfer object.
-type OrderItemDTO struct {
-	ID                      int64
-	OrderID                 int64
-	SKUID                   int64
-	ProductID               int64
-	Name                    string
-	Quantity                int
-	RetailPrice             float64
-	SalePrice               float64
-	Price                   float64
-	TotalPrice              float64
-	TaxAmount               float64
-	TaxCategory             string
-	ShippingAmount          float64
-	DiscountsAllowed        bool
-	HasValidationErrors     bool
-	ItemTaxableFlag         bool
-	OrderItemType           string
-	RetailPriceOverride     bool
-	SalePriceOverride       bool
-	CategoryID              *int64
-	GiftWrapItemID          *int64
-	ParentOrderItemID       *int64
-	PersonalMessageID       *int64
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
-}
+	// ListOrders retrieves a paginated list of orders based on a filter.
+	ListOrders(ctx context.Context, filter *domain.OrderFilter) ([]*domain.Order, int64, error)
 
-// OrderAdjustmentDTO represents an order adjustment data transfer object.
-type OrderAdjustmentDTO struct {
-	ID               int64
-	OrderID          int64
-	OfferID          int64
-	AdjustmentReason string
-	AdjustmentValue  float64
-	IsFutureCredit   bool
-	CreatedAt        time.Time
-}
-
-// OrderItemAdjustmentDTO represents an order item adjustment data transfer object.
-type OrderItemAdjustmentDTO struct {
-	ID                 int64
-	OrderItemID        int64
-	OfferID            int64
-	AdjustmentReason   string
-	AdjustmentValue    float64
-	AppliedToSalePrice bool
-	CreatedAt          time.Time
-}
-
-// OrderItemAttributeDTO represents a custom attribute for an order item.
-type OrderItemAttributeDTO struct {
-	OrderItemID int64
-	Name        string
-	Value       string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-}
-
-// FulfillmentGroupDTO represents a fulfillment group data transfer object.
-type FulfillmentGroupDTO struct {
-	ID                   int64
-	OrderID              int64
-	Type                 string
-	ShippingPrice        float64
-	ShippingPriceTaxable bool
-	MerchandiseTotal     float64
-	Method               string
-	IsPrimary            bool
-	ReferenceNumber      string
-	RetailPrice          float64
-	SalePrice            float64
-	Sequence             int
-	Service              string
-	ShippingOverride     bool
-	Status               string
-	Total                float64
-	TotalFeeTax          float64
-	TotalFgTax           float64
-	TotalItemTax         float64
-	TotalTax             float64
-	AddressID            *int64
-	FulfillmentOptionID  *int64
-	PersonalMessageID    *int64
-	PhoneID              *int64
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	// GetOrderByOrderNumber retrieves an order by its order number.
+	GetOrderByOrderNumber(ctx context.Context, orderNumber string) (*OrderDTO, error)
 }
 
 // CreateOrderCommand is a command to create a new order.
@@ -203,10 +99,10 @@ type orderService struct {
 	orderItemAttributeRepo  domain.OrderItemAttributeRepository
 	fulfillmentGroupRepo    domain.FulfillmentGroupRepository
 	offerService            offerApp.OfferService
-	inventoryService        application.InventoryService
-	productService          application.ProductService
-	skuService              application.SkuService
-	taxService              application.TaxService
+	inventoryService        inventoryApp.InventoryService
+	productService          catalogApp.ProductService
+	skuService              catalogApp.SkuService
+	taxService              taxApp.TaxService
 }
 
 // NewOrderService creates a new instance of OrderService.
@@ -218,10 +114,10 @@ func NewOrderService(
 	orderItemAttributeRepo domain.OrderItemAttributeRepository,
 	fulfillmentGroupRepo domain.FulfillmentGroupRepository,
 	offerService offerApp.OfferService,
-	inventoryService application.InventoryService,
-	productService application.ProductService,
-	skuService application.SkuService,
-	taxService application.TaxService,
+	inventoryService inventoryApp.InventoryService,
+	productService catalogApp.ProductService,
+	skuService catalogApp.SkuService,
+	taxService taxApp.TaxService,
 ) OrderService {
 	return &orderService{
 		orderRepo:               orderRepo,
@@ -248,10 +144,11 @@ func (s *orderService) CreateOrder(ctx context.Context, cmd *CreateOrderCommand)
 		return nil, fmt.Errorf("failed to create order: %w", err)
 	}
 
-	return toOrderDTO(order), nil
+	return ToOrderDTO(order), nil
 }
 
-func (s *orderService) GetOrderByID(ctx context.Context, id int64) (*OrderDTO, error) {
+// HandleGetOrderByID handles the get order by ID query
+func (s *orderService) HandleGetOrderByID(ctx context.Context, id int64) (*OrderDTO, error) {
 	order, err := s.orderRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find order by ID: %w", err)
@@ -312,15 +209,21 @@ func (s *orderService) AddItemToOrder(ctx context.Context, orderID int64, cmd *A
 	}
 
 	// 3. Allocate inventory
-	skuAvailability, err := s.inventoryService.GetSKUAvailabilityBySKUID(ctx, cmd.SKUID)
+	skuAvailability, err := s.inventoryService.GetInventoryLevelBySKUID(ctx, strconv.FormatInt(cmd.SKUID, 10)) // Use new method
 	if err != nil || skuAvailability == nil {
 		return nil, fmt.Errorf("failed to get SKU availability for ID %d: %w", cmd.SKUID, err)
 	}
-	if skuAvailability.QtyOnHand < cmd.Quantity { // Simple check, actual logic might be more complex
+	if skuAvailability.QuantityOnHand < cmd.Quantity { // Use QuantityOnHand
 		return nil, fmt.Errorf("not enough quantity on hand for SKU %d", cmd.SKUID)
 	}
 
-	_, err = s.inventoryService.UpdateSKUAvailabilityQuantities(ctx, skuAvailability.ID, skuAvailability.QtyOnHand-cmd.Quantity, skuAvailability.ReserveQty+cmd.Quantity)
+	// Update inventory quantities
+	updatedLevel, err := s.inventoryService.UpdateInventoryQuantities(
+		ctx,
+		skuAvailability.ID,
+		skuAvailability.QuantityOnHand-cmd.Quantity,
+		skuAvailability.QuantityReserved+cmd.Quantity,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to allocate inventory for SKU %d: %w", cmd.SKUID, err)
 	}
@@ -359,7 +262,12 @@ func (s *orderService) AddItemToOrder(ctx context.Context, orderID int64, cmd *A
 	err = s.orderItemRepo.Save(ctx, item)
 	if err != nil {
 		// Attempt to deallocate inventory if item save fails
-		deallocErr := s.inventoryService.UpdateSKUAvailabilityQuantities(ctx, skuAvailability.ID, skuAvailability.QtyOnHand, skuAvailability.ReserveQty-cmd.Quantity)
+		_, deallocErr := s.inventoryService.UpdateInventoryQuantities(
+			ctx,
+			updatedLevel.ID, // Use the ID from the updated level
+			updatedLevel.QuantityOnHand+cmd.Quantity,
+			updatedLevel.QuantityReserved-cmd.Quantity,
+		)
 		if deallocErr != nil {
 			return nil, fmt.Errorf("failed to save order item: %w (and failed to deallocate inventory: %v)", err, deallocErr)
 		}
@@ -382,7 +290,7 @@ func (s *orderService) AddItemToOrder(ctx context.Context, orderID int64, cmd *A
 		return nil, fmt.Errorf("failed to update order totals: %w", err)
 	}
 
-	return toOrderItemDTO(item), nil
+	return ToOrderItemDTO(item), nil
 }
 
 func (s *orderService) UpdateOrderItemQuantity(ctx context.Context, orderItemID int64, newQuantity int) (*OrderItemDTO, error) {
@@ -406,18 +314,28 @@ func (s *orderService) UpdateOrderItemQuantity(ctx context.Context, orderItemID 
 	quantityDiff := newQuantity - oldQuantity
 
 	if quantityDiff != 0 {
-		skuAvailability, err := s.inventoryService.GetSKUAvailabilityBySKUID(ctx, item.SKUID)
+		skuAvailability, err := s.inventoryService.GetInventoryLevelBySKUID(ctx, strconv.FormatInt(item.SKUID, 10))
 		if err != nil || skuAvailability == nil {
 			return nil, fmt.Errorf("failed to get SKU availability for ID %d: %w", item.SKUID, err)
 		}
 
 		if quantityDiff > 0 { // Increasing quantity, need to allocate more
-			if skuAvailability.QtyOnHand < quantityDiff {
+			if skuAvailability.QuantityOnHand < quantityDiff {
 				return nil, fmt.Errorf("not enough quantity on hand for SKU %d to increase by %d", item.SKUID, quantityDiff)
 			}
-			_, err = s.inventoryService.UpdateSKUAvailabilityQuantities(ctx, skuAvailability.ID, skuAvailability.QtyOnHand-quantityDiff, skuAvailability.ReserveQty+quantityDiff)
+			_, err = s.inventoryService.UpdateInventoryQuantities(
+				ctx,
+				skuAvailability.ID,
+				skuAvailability.QuantityOnHand-quantityDiff,
+				skuAvailability.QuantityReserved+quantityDiff,
+			)
 		} else { // Decreasing quantity, need to deallocate
-			_, err = s.inventoryService.UpdateSKUAvailabilityQuantities(ctx, skuAvailability.ID, skuAvailability.QtyOnHand-quantityDiff, skuAvailability.ReserveQty+quantityDiff)
+			_, err = s.inventoryService.UpdateInventoryQuantities(
+				ctx,
+				skuAvailability.ID,
+				skuAvailability.QuantityOnHand+quantityDiff, // This should be QuantityOnHand + abs(quantityDiff)
+				skuAvailability.QuantityReserved-quantityDiff, // This should be QuantityReserved - abs(quantityDiff)
+			)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to adjust inventory for SKU %d: %w", item.SKUID, err)
@@ -454,7 +372,7 @@ func (s *orderService) UpdateOrderItemQuantity(ctx context.Context, orderItemID 
 		return nil, fmt.Errorf("failed to update order totals after item quantity update: %w", err)
 	}
 
-	return toOrderItemDTO(item), nil
+	return ToOrderItemDTO(item), nil
 }
 
 func (s *orderService) RemoveOrderItem(ctx context.Context, orderItemID int64) error {
@@ -475,11 +393,16 @@ func (s *orderService) RemoveOrderItem(ctx context.Context, orderItemID int64) e
 	}
 
 	// Deallocate inventory
-	skuAvailability, err := s.inventoryService.GetSKUAvailabilityBySKUID(ctx, item.SKUID)
+	skuAvailability, err := s.inventoryService.GetInventoryLevelBySKUID(ctx, strconv.FormatInt(item.SKUID, 10))
 	if err != nil || skuAvailability == nil {
 		return fmt.Errorf("failed to get SKU availability for ID %d: %w", item.SKUID, err)
 	}
-	_, err = s.inventoryService.UpdateSKUAvailabilityQuantities(ctx, skuAvailability.ID, skuAvailability.QtyOnHand+item.Quantity, skuAvailability.ReserveQty-item.Quantity)
+	_, err = s.inventoryService.UpdateInventoryQuantities(
+		ctx,
+		skuAvailability.ID,
+		skuAvailability.QuantityOnHand+item.Quantity,
+		skuAvailability.QuantityReserved-item.Quantity,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to deallocate inventory for SKU %d: %w", item.SKUID, err)
 	}
@@ -505,7 +428,7 @@ func (s *orderService) RemoveOrderItem(ctx context.Context, orderItemID int64) e
 
 	err = s.orderRepo.Update(ctx, order)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update order totals after item removal: %w", err)
+		return fmt.Errorf("failed to update order totals after item removal: %w", err)
 	}
 
 	return nil
@@ -555,12 +478,17 @@ func (s *orderService) CancelOrder(ctx context.Context, orderID int64, reason st
 	}
 
 	for _, item := range items {
-		skuAvailability, err := s.inventoryService.GetSKUAvailabilityBySKUID(ctx, item.SKUID)
+		skuAvailability, err := s.inventoryService.GetInventoryLevelBySKUID(ctx, strconv.FormatInt(item.SKUID, 10))
 		if err != nil || skuAvailability == nil {
 			fmt.Printf("warning: failed to get SKU availability for SKU %d (order %d): %v\n", item.SKUID, orderID, err)
 			continue
 		}
-		_, deallocErr := s.inventoryService.UpdateSKUAvailabilityQuantities(ctx, skuAvailability.ID, skuAvailability.QtyOnHand+item.Quantity, skuAvailability.ReserveQty-item.Quantity)
+		_, deallocErr := s.inventoryService.UpdateInventoryQuantities(
+			ctx,
+			skuAvailability.ID,
+			skuAvailability.QuantityOnHand+item.Quantity,
+			skuAvailability.QuantityReserved-item.Quantity,
+		)
 		if deallocErr != nil {
 			// Log the error but continue with order cancellation to avoid blocking
 			fmt.Printf("warning: failed to deallocate inventory for SKU %d (order %d): %v\n", item.SKUID, orderID, deallocErr)
@@ -615,7 +543,7 @@ func (s *orderService) ApplyOffersToOrder(ctx context.Context, orderID int64, cu
 	}
 	var activeOffers []*offerDomain.Offer
 	for _, dto := range activeOffersDTO {
-		activeOffers = append(activeOffers, toOfferDomain(dto))
+		activeOffers = append(activeOffers, offerApp.ToOfferDomain(*dto)) // Corrected: use offerApp.ToOfferDomain and dereference dto
 	}
 
 
@@ -629,7 +557,7 @@ func (s *orderService) ApplyOffersToOrder(ctx context.Context, orderID int64, cu
 		}
 		if couponOfferDTO != nil && !couponOfferDTO.Archived {
 			// Further check customer-specific max uses and audience here if needed
-			applicableOffers = append(applicableOffers, toOfferDomain(couponOfferDTO))
+			applicableOffers = append(applicableOffers, offerApp.ToOfferDomain(*couponOfferDTO)) // Corrected
 		}
 	}
 
@@ -686,13 +614,13 @@ func (s *orderService) ApplyOffersToOrder(ctx context.Context, orderID int64, cu
 						}
 
 							if itemAdjustmentAmount > 0 {
-								itemAdj, _ := domain.NewOrderItemAdjustment(item.ID, offer.ID, offer.OfferDescription, -itemAdjustmentAmount, offer.ApplyToSalePrice, offer.AdjustmentType == offerDomain.OfferAdjustmentTypeOrderItem)
+								itemAdj, _ := domain.NewOrderItemAdjustment(item.ID, offer.ID, offer.OfferDescription, -itemAdjustmentAmount, offer.ApplyToSalePrice) // Removed last arg
 							err = s.orderItemAdjustmentRepo.Save(ctx, itemAdj)
 							if err != nil {
 								return nil, fmt.Errorf("failed to save order item adjustment: %w", err)
 							}
 							
-						item.UpdatePrices(item.RetailPrice, item.SalePrice, item.Price-(itemAdjustmentAmount/float64(item.Quantity)))
+							item.UpdatePrices(item.RetailPrice, item.SalePrice, item.Price-(itemAdjustmentAmount/float64(item.Quantity)))
 							err = s.orderItemRepo.Save(ctx, item)
 							if err != nil {
 								return nil, fmt.Errorf("failed to update order item prices: %w", err)
@@ -700,6 +628,7 @@ func (s *orderService) ApplyOffersToOrder(ctx context.Context, orderID int64, cu
 							// Increment offer uses (needs to be handled by offer service)
 							// s.offerService.IncrementOfferUses(ctx, offer.ID)
 						}
+					}
 				}
 			}
 		// TODO: Implement BOGO logic, Shipping discounts, and more complex rules.
@@ -752,7 +681,27 @@ func (s *orderService) CreateFulfillmentGroup(ctx context.Context, orderID int64
 		return nil, fmt.Errorf("failed to save fulfillment group: %w", err)
 	}
 
-	return toFulfillmentGroupDTO(fg), nil
+	return ToFulfillmentGroupDTO(fg), nil
+}
+
+// UpdateOrderShippingDetails updates the shipping details of an order.
+func (s *orderService) UpdateOrderShippingDetails(ctx context.Context, orderID int64, shippingCost float64) error {
+	order, err := s.orderRepo.FindByID(ctx, orderID)
+	if err != nil {
+		return fmt.Errorf("failed to find order by ID for shipping update: %w", err)
+	}
+	if order == nil {
+		return fmt.Errorf("order with ID %d not found for shipping update", orderID)
+	}
+
+	order.TotalShipping = shippingCost
+	order.OrderTotal = order.OrderSubtotal + order.TotalTax + order.TotalShipping // Recalculate total
+
+	err = s.orderRepo.Update(ctx, order)
+	if err != nil {
+		return fmt.Errorf("failed to update order shipping details: %w", err)
+	}
+	return nil
 }
 
 // checkItemEligibility is a placeholder for complex item eligibility logic.
@@ -800,153 +749,40 @@ func toOrderDTOWithRelations(
 
 	itemsDTO := make([]*OrderItemDTO, len(items))
 	for i, item := range items {
-		itemsDTO[i] = toOrderItemDTO(item)
+		itemsDTO[i] = ToOrderItemDTO(item)
 	}
 	orderDTO.Items = itemsDTO
 
 	adjustmentsDTO := make([]*OrderAdjustmentDTO, len(orderAdjustments))
 	for i, adj := range orderAdjustments {
-		adjustmentsDTO[i] = toOrderAdjustmentDTO(adj)
+		adjustmentsDTO[i] = ToOrderAdjustmentDTO(adj)
 	}
 	orderDTO.OrderAdjustments = adjustmentsDTO
 
 	fulfillmentGroupsDTO := make([]*FulfillmentGroupDTO, len(fulfillmentGroups))
 	for i, fg := range fulfillmentGroups {
-		fulfillmentGroupsDTO[i] = toFulfillmentGroupDTO(fg)
+		fulfillmentGroupsDTO[i] = ToFulfillmentGroupDTO(fg)
 	}
 	orderDTO.FulfillmentGroups = fulfillmentGroupsDTO
 
 	return orderDTO
 }
 
-func toOrderItemDTO(item *domain.OrderItem) *OrderItemDTO {
-	return &OrderItemDTO{
-		ID:                      item.ID,
-		OrderID:                 item.OrderID,
-		SKUID:                   item.SKUID,
-		ProductID:               item.ProductID,
-		Name:                    item.Name,
-		Quantity:                item.Quantity,
-		RetailPrice:             item.RetailPrice,
-		SalePrice:               item.SalePrice,
-		Price:                   item.Price,
-		TotalPrice:              item.TotalPrice,
-		TaxAmount:               item.TaxAmount,
-		TaxCategory:             item.TaxCategory,
-		ShippingAmount:          item.ShippingAmount,
-		DiscountsAllowed:        item.DiscountsAllowed,
-		HasValidationErrors:     item.HasValidationErrors,
-		ItemTaxableFlag:         item.ItemTaxableFlag,
-		OrderItemType:           item.OrderItemType,
-		RetailPriceOverride:     item.RetailPriceOverride,
-		SalePriceOverride:       item.SalePriceOverride,
-		CategoryID:              item.CategoryID,
-		GiftWrapItemID:          item.GiftWrapItemID,
-		ParentOrderItemID:       item.ParentOrderItemID,
-		PersonalMessageID:       item.PersonalMessageID,
-		CreatedAt:               item.CreatedAt,
-		UpdatedAt:               item.UpdatedAt,
+func (s *orderService) ListOrders(ctx context.Context, filter *domain.OrderFilter) ([]*domain.Order, int64, error) {
+	orders, total, err := s.orderRepo.FindAll(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list orders: %w", err)
 	}
+	return orders, total, nil
 }
 
-func toOrderAdjustmentDTO(adj *domain.OrderAdjustment) *OrderAdjustmentDTO {
-	return &OrderAdjustmentDTO{
-		ID:               adj.ID,
-		OrderID:          adj.OrderID,
-		OfferID:          adj.OfferID,
-		AdjustmentReason: adj.AdjustmentReason,
-		AdjustmentValue:  adj.AdjustmentValue,
-		IsFutureCredit:   adj.IsFutureCredit,
-		CreatedAt:        adj.CreatedAt,
+func (s *orderService) GetOrderByOrderNumber(ctx context.Context, orderNumber string) (*OrderDTO, error) {
+	order, err := s.orderRepo.FindByOrderNumber(ctx, orderNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find order by order number %s: %w", orderNumber, err)
 	}
-}
-
-func toOrderItemAdjustmentDTO(adj *domain.OrderItemAdjustment) *OrderItemAdjustmentDTO {
-	return &OrderItemAdjustmentDTO{
-		ID:                 adj.ID,
-		OrderItemID:        adj.OrderItemID,
-		OfferID:            adj.OfferID,
-		AdjustmentReason:   adj.AdjustmentReason,
-		AdjustmentValue:    adj.AdjustmentValue,
-		AppliedToSalePrice: adj.AppliedToSalePrice,
-		CreatedAt:          adj.CreatedAt,
+	if order == nil {
+		return nil, fmt.Errorf("order with order number %s not found", orderNumber)
 	}
-}
-
-func toOrderItemAttributeDTO(attr *domain.OrderItemAttribute) *OrderItemAttributeDTO {
-	return &OrderItemAttributeDTO{
-		OrderItemID: attr.OrderItemID,
-		Name:        attr.Name,
-		Value:       attr.Value,
-		CreatedAt:   attr.CreatedAt,
-		UpdatedAt:   attr.UpdatedAt,
-	}
-}
-
-func toFulfillmentGroupDTO(fg *domain.FulfillmentGroup) *FulfillmentGroupDTO {
-	return &FulfillmentGroupDTO{
-		ID:                   fg.ID,
-		OrderID:              fg.OrderID,
-		Type:                 fg.Type,
-		ShippingPrice:        fg.ShippingPrice,
-		ShippingPriceTaxable: fg.ShippingPriceTaxable,
-		MerchandiseTotal:     fg.MerchandiseTotal,
-		Method:               fg.Method,
-		IsPrimary:            fg.IsPrimary,
-		ReferenceNumber:      fg.ReferenceNumber,
-		RetailPrice:          fg.RetailPrice,
-		SalePrice:            fg.SalePrice,
-		Sequence:             fg.Sequence,
-		Service:              fg.Service,
-		ShippingOverride:     fg.ShippingOverride,
-		Status:               fg.Status,
-		Total:                fg.Total,
-		TotalFeeTax:          fg.TotalFeeTax,
-		TotalFgTax:           fg.TotalFgTax,
-		TotalItemTax:         fg.TotalItemTax,
-		TotalTax:             fg.TotalTax,
-		AddressID:            fg.AddressID,
-		FulfillmentOptionID:  fg.FulfillmentOptionID,
-		PersonalMessageID:    fg.PersonalMessageID,
-		PhoneID:              fg.PhoneID,
-		CreatedAt:            fg.CreatedAt,
-		UpdatedAt:            fg.UpdatedAt,
-	}
-}
-
-// Helper to convert OfferApp.OfferDTO to OfferDomain.Offer
-func toOfferDomain(offerDTO offerApp.OfferDTO) *offerDomain.Offer {
-	return &offerDomain.Offer{
-		ID: offerDTO.ID,
-		Name: offerDTO.Name,
-		OfferType: offerDTO.OfferType,
-		OfferValue: offerDTO.OfferValue,
-		AdjustmentType: offerDTO.AdjustmentType,
-		ApplyToChildItems: offerDTO.ApplyToChildItems,
-		ApplyToSalePrice: offerDTO.ApplyToSalePrice,
-		Archived: offerDTO.Archived,
-		AutomaticallyAdded: offerDTO.AutomaticallyAdded,
-		CombinableWithOtherOffers: offerDTO.CombinableWithOtherOffers,
-		OfferDescription: offerDTO.OfferDescription,
-		OfferDiscountType: offerDTO.OfferDiscountType,
-		EndDate: offerDTO.EndDate,
-		MarketingMessage: offerDTO.MarketingMessage,
-		MaxUsesPerCustomer: offerDTO.MaxUsesPerCustomer,
-		MaxUses: offerDTO.MaxUses,
-		MaxUsesStrategy: offerDTO.MaxUsesStrategy,
-		MinimumDaysPerUsage: offerDTO.MinimumDaysPerUsage,
-		OfferItemQualifierRule: offerDTO.OfferItemQualifierRule,
-		OfferItemTargetRule: offerDTO.OfferItemTargetRule,
-		OrderMinTotal: offerDTO.OrderMinTotal,
-		OfferPriority: offerDTO.OfferPriority,
-		QualifyingItemMinTotal: offerDTO.QualifyingItemMinTotal,
-		RequiresRelatedTarQual: offerDTO.RequiresRelatedTarQual,
-		StartDate: offerDTO.StartDate,
-		TargetMinTotal: offerDTO.TargetMinTotal,
-		TargetSystem: offerDTO.TargetSystem,
-		TotalitarianOffer: offerDTO.TotalitarianOffer,
-		UseListForDiscounts: offerDTO.UseListForDiscounts,
-		CreatedAt: offerDTO.CreatedAt,
-		UpdatedAt: offerDTO.UpdatedAt,
-	}
+	return ToOrderDTO(order), nil
 }

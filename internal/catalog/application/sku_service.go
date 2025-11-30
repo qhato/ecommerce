@@ -41,59 +41,6 @@ type SkuService interface {
 	RemoveSkuProductOptionValue(ctx context.Context, skuID, productOptionValueID int64) error
 }
 
-// SkuDTO represents a SKU data transfer object.
-type SkuDTO struct {
-	ID                     int64
-	Name                   string
-	Description            string
-	LongDescription        string
-	ActiveStartDate        *time.Time
-	ActiveEndDate          *time.Time
-	Available              bool
-	Cost                   float64
-	RetailPrice            float64
-	SalePrice              float64
-	Taxable                bool
-	TaxCode                string
-	UPC                    string
-	URLKey                 string
-	Weight                 float64
-	WeightUnitOfMeasure    string
-	CurrencyCode           string
-	DefaultProductID       *int64
-	AdditionalProductID    *int64
-	ContainerShape         string
-	Depth                  float64
-	DimensionUnitOfMeasure string
-	Girth                  float64
-	Height                 float64
-	ContainerSize          string
-	Width                  float64
-	Discountable           bool
-	DisplayTemplate        string
-	ExternalID             string
-	FulfillmentType        string
-	InventoryType          string
-	IsMachineSortable      bool
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
-}
-
-// SkuAttributeDTO represents a SKU attribute data transfer object.
-type SkuAttributeDTO struct {
-	ID    int64
-	Name  string
-	Value string
-	SKUID int64
-}
-
-// SkuProductOptionValueXrefDTO represents a SKU product option value cross-reference data transfer object.
-type SkuProductOptionValueXrefDTO struct {
-	ID                   int64
-	SKUID                int64
-	ProductOptionValueID int64
-}
-
 // CreateSkuCommand is a command to create a new SKU.
 type CreateSkuCommand struct {
 	Name                   string
@@ -127,6 +74,7 @@ type CreateSkuCommand struct {
 	URLKey                 string
 	Weight                 float64
 	WeightUnitOfMeasure    string
+	Attributes             map[string]string
 }
 
 // UpdateSkuCommand is a command to update an existing SKU.
@@ -215,12 +163,24 @@ func (s *skuService) CreateSku(ctx context.Context, cmd *CreateSkuCommand) (*Sku
 	sku.Weight = cmd.Weight
 	sku.WeightUnitOfMeasure = cmd.WeightUnitOfMeasure
 
-	err := s.skuRepo.Save(ctx, sku)
+	err := s.skuRepo.Create(ctx, sku)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save SKU: %w", err)
 	}
 
-	return toSkuDTO(sku), nil
+	if len(cmd.Attributes) > 0 {
+		for name, value := range cmd.Attributes {
+			attr, err := domain.NewSKUAttribute(sku.ID, name, value)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create SKU attribute: %w", err)
+			}
+			if err := s.skuAttributeRepo.Save(ctx, attr); err != nil {
+				return nil, fmt.Errorf("failed to save SKU attribute: %w", err)
+			}
+		}
+	}
+
+	return ToSkuDTO(sku), nil
 }
 
 func (s *skuService) GetSkuByID(ctx context.Context, id int64) (*SkuDTO, error) {
@@ -231,7 +191,7 @@ func (s *skuService) GetSkuByID(ctx context.Context, id int64) (*SkuDTO, error) 
 	if sku == nil {
 		return nil, fmt.Errorf("SKU with ID %d not found", id)
 	}
-	return toSkuDTO(sku), nil
+	return ToSkuDTO(sku), nil
 }
 
 func (s *skuService) UpdateSku(ctx context.Context, cmd *UpdateSkuCommand) (*SkuDTO, error) {
@@ -266,7 +226,7 @@ func (s *skuService) UpdateSku(ctx context.Context, cmd *UpdateSkuCommand) (*Sku
 	}
 	if cmd.Taxable != nil && cmd.TaxCode != nil {
 		sku.SetTaxable(*cmd.Taxable, *cmd.TaxCode)
-	} else if cmd.Taxable != nil { // If only taxable flag is updated
+	} else if cmd.Taxable != nil {
 		sku.SetTaxable(*cmd.Taxable, sku.TaxCode)
 	}
 	if cmd.Available != nil {
@@ -324,18 +284,18 @@ func (s *skuService) UpdateSku(ctx context.Context, cmd *UpdateSkuCommand) (*Sku
 		sku.URLKey = *cmd.URLKey
 	}
 	if cmd.Weight != nil {
-		sku.SetWeight(*cmd.Weight, sku.WeightUnitOfMeasure) // Assuming WeightUnitOfMeasure doesn't change here
+		sku.SetWeight(*cmd.Weight, sku.WeightUnitOfMeasure)
 	}
 	if cmd.WeightUnitOfMeasure != nil {
 		sku.WeightUnitOfMeasure = *cmd.WeightUnitOfMeasure
 	}
 
-	err = s.skuRepo.Save(ctx, sku)
+	err = s.skuRepo.Update(ctx, sku)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update SKU: %w", err)
 	}
 
-	return toSkuDTO(sku), nil
+	return ToSkuDTO(sku), nil
 }
 
 func (s *skuService) SetSkuAvailability(ctx context.Context, skuID int64, available bool) error {
@@ -348,7 +308,7 @@ func (s *skuService) SetSkuAvailability(ctx context.Context, skuID int64, availa
 	}
 
 	sku.SetAvailability(available)
-	err = s.skuRepo.Save(ctx, sku)
+	err = s.skuRepo.UpdateAvailability(ctx, sku.ID, available)
 	if err != nil {
 		return fmt.Errorf("failed to set SKU availability: %w", err)
 	}
@@ -365,7 +325,7 @@ func (s *skuService) UpdateSkuPricing(ctx context.Context, skuID int64, retailPr
 	}
 
 	sku.UpdatePricing(retailPrice, salePrice)
-	err = s.skuRepo.Save(ctx, sku)
+	err = s.skuRepo.Update(ctx, sku)
 	if err != nil {
 		return fmt.Errorf("failed to update SKU pricing: %w", err)
 	}
@@ -383,7 +343,7 @@ func (s *skuService) AddSkuAttribute(ctx context.Context, skuID int64, name, val
 		return nil, fmt.Errorf("failed to save SKU attribute: %w", err)
 	}
 
-	return toSkuAttributeDTO(attribute), nil
+	return ToSkuAttributeDTO(attribute), nil
 }
 
 func (s *skuService) UpdateSkuAttribute(ctx context.Context, skuAttributeID int64, name, value string) (*SkuAttributeDTO, error) {
@@ -401,7 +361,7 @@ func (s *skuService) UpdateSkuAttribute(ctx context.Context, skuAttributeID int6
 		return nil, fmt.Errorf("failed to update SKU attribute: %w", err)
 	}
 
-	return toSkuAttributeDTO(attribute), nil
+	return ToSkuAttributeDTO(attribute), nil
 }
 
 func (s *skuService) RemoveSkuAttribute(ctx context.Context, skuAttributeID int64) error {
@@ -423,7 +383,7 @@ func (s *skuService) AddSkuProductOptionValue(ctx context.Context, skuID, produc
 		return nil, fmt.Errorf("failed to save SKU product option value xref: %w", err)
 	}
 
-	return toSkuProductOptionValueXrefDTO(xref), nil
+	return ToSkuProductOptionValueXrefDTO(xref), nil
 }
 
 func (s *skuService) RemoveSkuProductOptionValue(ctx context.Context, skuID, productOptionValueID int64) error {
@@ -432,60 +392,4 @@ func (s *skuService) RemoveSkuProductOptionValue(ctx context.Context, skuID, pro
 		return fmt.Errorf("failed to remove SKU product option value xref: %w", err)
 	}
 	return nil
-}
-
-func toSkuDTO(sku *domain.SKU) *SkuDTO {
-	return &SkuDTO{
-		ID:                     sku.ID,
-		Name:                   sku.Name,
-		Description:            sku.Description,
-		LongDescription:        sku.LongDescription,
-		ActiveStartDate:        sku.ActiveStartDate,
-		ActiveEndDate:          sku.ActiveEndDate,
-		Available:              sku.Available,
-		Cost:                   sku.Cost,
-		RetailPrice:            sku.RetailPrice,
-		SalePrice:              sku.SalePrice,
-		Taxable:                sku.Taxable,
-		TaxCode:                sku.TaxCode,
-		UPC:                    sku.UPC,
-		URLKey:                 sku.URLKey,
-		Weight:                 sku.Weight,
-		WeightUnitOfMeasure:    sku.WeightUnitOfMeasure,
-		CurrencyCode:           sku.CurrencyCode,
-		DefaultProductID:       sku.DefaultProductID,
-		AdditionalProductID:    sku.AdditionalProductID,
-		ContainerShape:         sku.ContainerShape,
-		Depth:                  sku.Depth,
-		DimensionUnitOfMeasure: sku.DimensionUnitOfMeasure,
-		Girth:                  sku.Girth,
-		Height:                 sku.Height,
-		ContainerSize:          sku.ContainerSize,
-		Width:                  sku.Width,
-		Discountable:           sku.Discountable,
-		DisplayTemplate:        sku.DisplayTemplate,
-		ExternalID:             sku.ExternalID,
-		FulfillmentType:        sku.FulfillmentType,
-		InventoryType:          sku.InventoryType,
-		IsMachineSortable:      sku.IsMachineSortable,
-		CreatedAt:              sku.CreatedAt,
-		UpdatedAt:              sku.UpdatedAt,
-	}
-}
-
-func toSkuAttributeDTO(attribute *domain.SKUAttribute) *SkuAttributeDTO {
-	return &SkuAttributeDTO{
-		ID:    attribute.ID,
-		Name:  attribute.Name,
-		Value: attribute.Value,
-		SKUID: attribute.SKUID,
-	}
-}
-
-func toSkuProductOptionValueXrefDTO(xref *domain.SkuProductOptionValueXref) *SkuProductOptionValueXrefDTO {
-	return &SkuProductOptionValueXrefDTO{
-		ID:                   xref.ID,
-		SKUID:                xref.SKUID,
-		ProductOptionValueID: xref.ProductOptionValueID,
-	}
 }

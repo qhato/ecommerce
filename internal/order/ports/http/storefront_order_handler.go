@@ -5,11 +5,11 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/qhato/ecommerce/internal/order/application"
 	"github.com/qhato/ecommerce/internal/order/application/queries"
 	"github.com/qhato/ecommerce/internal/order/domain"
 	httpPkg "github.com/qhato/ecommerce/pkg/http"
 	"github.com/qhato/ecommerce/pkg/logger"
+	"github.com/qhato/ecommerce/pkg/errors" // Import pkg/errors
 )
 
 // StorefrontOrderHandler handles storefront order HTTP requests
@@ -43,34 +43,44 @@ func (h *StorefrontOrderHandler) GetOrder(w http.ResponseWriter, r *http.Request
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID").WithInternal(err))
 		return
 	}
 
-	order, err := h.queryHandler.GetByID(r.Context(), id)
+	query := &queries.GetOrderByIDQuery{ID: id}
+	order, err := h.queryHandler.HandleGetOrderByID(r.Context(), query)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "order not found", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to get order").WithInternal(err))
+		}
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusOK, application.ToOrderDTO(order))
+	httpPkg.RespondJSON(w, http.StatusOK, order)
 }
 
 // GetOrderByNumber retrieves an order by order number
 func (h *StorefrontOrderHandler) GetOrderByNumber(w http.ResponseWriter, r *http.Request) {
 	orderNumber := chi.URLParam(r, "orderNumber")
 	if orderNumber == "" {
-		httpPkg.RespondError(w, http.StatusBadRequest, "order number is required", nil)
+		httpPkg.RespondError(w, errors.BadRequest("order number is required"))
 		return
 	}
 
-	order, err := h.queryHandler.GetByOrderNumber(r.Context(), orderNumber)
+	query := &queries.GetOrderByOrderNumberQuery{OrderNumber: orderNumber}
+	order, err := h.queryHandler.HandleGetOrderByOrderNumber(r.Context(), query)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "order not found", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to get order by number").WithInternal(err))
+		}
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusOK, application.ToOrderDTO(order))
+	httpPkg.RespondJSON(w, http.StatusOK, order)
 }
 
 // ListCustomerOrders lists orders for a specific customer
@@ -78,9 +88,10 @@ func (h *StorefrontOrderHandler) ListCustomerOrders(w http.ResponseWriter, r *ht
 	customerIDStr := chi.URLParam(r, "customerId")
 	customerID, err := strconv.ParseInt(customerIDStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
+	customerIDPtr := &customerID // Use pointer for CustomerID in filter
 
 	// Parse query parameters
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -93,37 +104,30 @@ func (h *StorefrontOrderHandler) ListCustomerOrders(w http.ResponseWriter, r *ht
 		pageSize = 20
 	}
 
-	status := r.URL.Query().Get("status")
+	statusStr := r.URL.Query().Get("status")
+	var status *domain.OrderStatus
+	if statusStr != "" {
+		s := domain.OrderStatus(statusStr)
+		status = &s
+	}
+
 	sortBy := r.URL.Query().Get("sort_by")
 	sortOrder := r.URL.Query().Get("sort_order")
 
-	filter := &domain.OrderFilter{
+	query := &queries.ListOrdersQuery{
 		Page:       page,
 		PageSize:   pageSize,
-		Status:     domain.OrderStatus(status),
-		CustomerID: customerID,
+		Status:     status,
+		CustomerID: customerIDPtr, // Use pointer
 		SortBy:     sortBy,
 		SortOrder:  sortOrder,
 	}
 
-	orders, total, err := h.queryHandler.ListByCustomer(r.Context(), customerID, filter)
+	result, err := h.queryHandler.HandleListOrders(r.Context(), query)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to list customer orders", err)
+		httpPkg.RespondError(w, errors.Internal("failed to list customer orders").WithInternal(err))
 		return
 	}
 
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize > 0 {
-		totalPages++
-	}
-
-	response := application.PaginatedOrderResponse{
-		Data:       application.ToOrderDTOs(orders),
-		Page:       page,
-		PageSize:   pageSize,
-		TotalItems: total,
-		TotalPages: totalPages,
-	}
-
-	httpPkg.RespondJSON(w, http.StatusOK, response)
+	httpPkg.RespondJSON(w, http.StatusOK, result)
 }

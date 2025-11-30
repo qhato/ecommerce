@@ -69,99 +69,12 @@ type OfferService interface {
 
 	// DeleteOfferPriceData deletes offer price data.
 	DeleteOfferPriceData(ctx context.Context, id int64) error
-}
 
-// OfferDTO represents an offer data transfer object.
-type OfferDTO struct {
-	ID                        int64
-	Name                      string
-	OfferType                 domain.OfferType
-	OfferValue                float64
-	AdjustmentType            domain.OfferAdjustmentType
-	ApplyToChildItems         bool
-	ApplyToSalePrice          bool
-	Archived                  bool
-	AutomaticallyAdded        bool
-	CombinableWithOtherOffers bool
-	OfferDescription          string
-	OfferDiscountType         domain.OfferDiscountType
-	EndDate                   *time.Time
-	MarketingMessage          string
-	MaxUsesPerCustomer        *int64
-	MaxUses                   *int
-	MaxUsesStrategy           string
-	MinimumDaysPerUsage       *int64
-	OfferItemQualifierRule    string
-	OfferItemTargetRule       string
-	OrderMinTotal             float64
-	OfferPriority             int
-	QualifyingItemMinTotal    float64
-	RequiresRelatedTarQual    bool
-	StartDate                 time.Time
-	TargetMinTotal            float64
-	TargetSystem              string
-	TotalitarianOffer         bool
-	UseListForDiscounts       bool
-	CreatedAt                 time.Time
-	UpdatedAt                 time.Time
-}
+	// GetActiveOffers retrieves all active offers.
+	GetActiveOffers(ctx context.Context) ([]*OfferDTO, error)
 
-// OfferCodeDTO represents an offer code data transfer object.
-type OfferCodeDTO struct {
-	ID           int64
-	OfferID      int64
-	Code         string
-	MaxUses      *int
-	Uses         int
-	EmailAddress *string
-	StartDate    *time.Time
-	EndDate      *time.Time
-	Archived     bool
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-}
-
-// OfferItemCriteriaDTO represents offer item criteria data transfer object.
-type OfferItemCriteriaDTO struct {
-	ID                 int64
-	Quantity           int
-	OrderItemMatchRule string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
-}
-
-// QualCritOfferXrefDTO represents a qualifying criteria xref data transfer object.
-type QualCritOfferXrefDTO struct {
-	ID                  int64
-	OfferID             int64
-	OfferItemCriteriaID int64
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
-}
-
-// TarCritOfferXrefDTO represents a target criteria xref data transfer object.
-type TarCritOfferXrefDTO struct {
-	ID                  int64
-	OfferID             int64
-	OfferItemCriteriaID int64
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
-}
-
-// OfferPriceDataDTO represents offer price data transfer object.
-type OfferPriceDataDTO struct {
-	ID              int64
-	OfferID         int64
-	Amount          float64
-	DiscountType    string
-	IdentifierType  string
-	IdentifierValue string
-	Quantity        int
-	StartDate       *time.Time
-	EndDate         *time.Time
-	Archived        bool
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	// GetOfferByCode retrieves an offer by its code.
+	GetOfferByCode(ctx context.Context, code string) (*OfferDTO, error)
 }
 
 // CreateOfferCommand is a command to create a new offer.
@@ -338,6 +251,7 @@ func (s *offerService) CreateOffer(ctx context.Context, cmd *CreateOfferCommand)
 	offer.OfferPriority = cmd.OfferPriority
 	offer.QualifyingItemMinTotal = cmd.QualifyingItemMinTotal
 	offer.RequiresRelatedTarQual = cmd.RequiresRelatedTarQual
+	offer.StartDate = cmd.StartDate
 	offer.TargetMinTotal = cmd.TargetMinTotal
 	offer.TargetSystem = cmd.TargetSystem
 	offer.TotalitarianOffer = cmd.TotalitarianOffer
@@ -348,7 +262,7 @@ func (s *offerService) CreateOffer(ctx context.Context, cmd *CreateOfferCommand)
 		return nil, fmt.Errorf("failed to save offer: %w", err)
 	}
 
-	return toOfferDTO(offer), nil
+	return ToOfferDTO(offer), nil
 }
 
 func (s *offerService) GetOfferByID(ctx context.Context, id int64) (*OfferDTO, error) {
@@ -359,7 +273,7 @@ func (s *offerService) GetOfferByID(ctx context.Context, id int64) (*OfferDTO, e
 	if offer == nil {
 		return nil, fmt.Errorf("offer with ID %d not found", id)
 	}
-	return toOfferDTO(offer), nil
+	return ToOfferDTO(offer), nil
 }
 
 func (s *offerService) UpdateOffer(ctx context.Context, cmd *UpdateOfferCommand) (*OfferDTO, error) {
@@ -465,7 +379,7 @@ func (s *offerService) UpdateOffer(ctx context.Context, cmd *UpdateOfferCommand)
 		return nil, fmt.Errorf("failed to update offer: %w", err)
 	}
 
-	return toOfferDTO(offer), nil
+	return ToOfferDTO(offer), nil
 }
 
 func (s *offerService) DeleteOffer(ctx context.Context, id int64) error {
@@ -514,7 +428,7 @@ func (s *offerService) CreateOfferCode(ctx context.Context, offerID int64, cmd *
 	if err != nil {
 		return nil, fmt.Errorf("failed to save offer code: %w", err)
 	}
-	return toOfferCodeDTO(offerCode), nil
+	return ToOfferCodeDTO(offerCode), nil
 }
 
 func (s *offerService) GetOfferCodeByID(ctx context.Context, id int64) (*OfferCodeDTO, error) {
@@ -525,7 +439,7 @@ func (s *offerService) GetOfferCodeByID(ctx context.Context, id int64) (*OfferCo
 	if offerCode == nil {
 		return nil, fmt.Errorf("offer code with ID %d not found", id)
 	}
-	return toOfferCodeDTO(offerCode), nil
+	return ToOfferCodeDTO(offerCode), nil
 }
 
 func (s *offerService) UpdateOfferCode(ctx context.Context, id int64, cmd *UpdateOfferCodeCommand) (*OfferCodeDTO, error) {
@@ -564,7 +478,7 @@ func (s *offerService) UpdateOfferCode(ctx context.Context, id int64, cmd *Updat
 	if err != nil {
 		return nil, fmt.Errorf("failed to update offer code: %w", err)
 	}
-	return toOfferCodeDTO(offerCode), nil
+	return ToOfferCodeDTO(offerCode), nil
 }
 
 func (s *offerService) DeleteOfferCode(ctx context.Context, id int64) error {
@@ -585,7 +499,7 @@ func (s *offerService) CreateOfferItemCriteria(ctx context.Context, cmd *CreateO
 	if err != nil {
 		return nil, fmt.Errorf("failed to save offer item criteria: %w", err)
 	}
-	return toOfferItemCriteriaDTO(criteria), nil
+	return ToOfferItemCriteriaDTO(criteria), nil
 }
 
 func (s *offerService) GetOfferItemCriteriaByID(ctx context.Context, id int64) (*OfferItemCriteriaDTO, error) {
@@ -596,7 +510,7 @@ func (s *offerService) GetOfferItemCriteriaByID(ctx context.Context, id int64) (
 	if criteria == nil {
 		return nil, fmt.Errorf("offer item criteria with ID %d not found", id)
 	}
-	return toOfferItemCriteriaDTO(criteria), nil
+	return ToOfferItemCriteriaDTO(criteria), nil
 }
 
 func (s *offerService) UpdateOfferItemCriteria(ctx context.Context, id int64, cmd *UpdateOfferItemCriteriaCommand) (*OfferItemCriteriaDTO, error) {
@@ -622,7 +536,7 @@ func (s *offerService) UpdateOfferItemCriteria(ctx context.Context, id int64, cm
 	if err != nil {
 		return nil, fmt.Errorf("failed to update offer item criteria: %w", err)
 	}
-	return toOfferItemCriteriaDTO(criteria), nil
+	return ToOfferItemCriteriaDTO(criteria), nil
 }
 
 func (s *offerService) DeleteOfferItemCriteria(ctx context.Context, id int64) error {
@@ -658,7 +572,7 @@ func (s *offerService) AddQualifyingItemCriteriaToOffer(ctx context.Context, off
 	if err != nil {
 		return nil, fmt.Errorf("failed to save qualifying criteria xref: %w", err)
 	}
-	return toQualCritOfferXrefDTO(xref), nil
+	return ToQualCritOfferXrefDTO(xref), nil
 }
 
 func (s *offerService) RemoveQualifyingItemCriteriaFromOffer(ctx context.Context, offerID, offerItemCriteriaID int64) error {
@@ -678,7 +592,7 @@ func (s *offerService) AddTargetItemCriteriaToOffer(ctx context.Context, offerID
 	if err != nil {
 		return nil, fmt.Errorf("failed to save target criteria xref: %w", err)
 	}
-	return toTarCritOfferXrefDTO(xref), nil
+	return ToTarCritOfferXrefDTO(xref), nil
 }
 
 func (s *offerService) RemoveTargetItemCriteriaFromOffer(ctx context.Context, offerID, offerItemCriteriaID int64) error {
@@ -700,7 +614,7 @@ func (s *offerService) CreateOfferPriceData(ctx context.Context, offerID int64, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to save offer price data: %w", err)
 	}
-	return toOfferPriceDataDTO(priceData), nil
+	return ToOfferPriceDataDTO(priceData), nil
 }
 
 func (s *offerService) GetOfferPriceDataByID(ctx context.Context, id int64) (*OfferPriceDataDTO, error) {
@@ -711,7 +625,7 @@ func (s *offerService) GetOfferPriceDataByID(ctx context.Context, id int64) (*Of
 	if priceData == nil {
 		return nil, fmt.Errorf("offer price data with ID %d not found", id)
 	}
-	return toOfferPriceDataDTO(priceData), nil
+	return ToOfferPriceDataDTO(priceData), nil
 }
 
 func (s *offerService) UpdateOfferPriceData(ctx context.Context, id int64, cmd *UpdateOfferPriceDataCommand) (*OfferPriceDataDTO, error) {
@@ -760,7 +674,7 @@ func (s *offerService) UpdateOfferPriceData(ctx context.Context, id int64, cmd *
 	if err != nil {
 		return nil, fmt.Errorf("failed to update offer price data: %w", err)
 	}
-	return toOfferPriceDataDTO(priceData), nil
+	return ToOfferPriceDataDTO(priceData), nil
 }
 
 func (s *offerService) DeleteOfferPriceData(ctx context.Context, id int64) error {
@@ -771,101 +685,41 @@ func (s *offerService) DeleteOfferPriceData(ctx context.Context, id int64) error
 	return nil
 }
 
-func toOfferDTO(offer *domain.Offer) *OfferDTO {
-	return &OfferDTO{
-		ID:                        offer.ID,
-		Name:                      offer.Name,
-		OfferType:                 offer.OfferType,
-		OfferValue:                offer.OfferValue,
-		AdjustmentType:            offer.AdjustmentType,
-		ApplyToChildItems:         offer.ApplyToChildItems,
-		ApplyToSalePrice:          offer.ApplyToSalePrice,
-		Archived:                  offer.Archived,
-		AutomaticallyAdded:        offer.AutomaticallyAdded,
-		CombinableWithOtherOffers: offer.CombinableWithOtherOffers,
-		OfferDescription:          offer.OfferDescription,
-		OfferDiscountType:         offer.OfferDiscountType,
-		EndDate:                   offer.EndDate,
-		MarketingMessage:          offer.MarketingMessage,
-		MaxUsesPerCustomer:        offer.MaxUsesPerCustomer,
-		MaxUses:                   offer.MaxUses,
-		MaxUsesStrategy:           offer.MaxUsesStrategy,
-		MinimumDaysPerUsage:       offer.MinimumDaysPerUsage,
-		OfferItemQualifierRule:    offer.OfferItemQualifierRule,
-		OfferItemTargetRule:       offer.OfferItemTargetRule,
-		OrderMinTotal:             offer.OrderMinTotal,
-		OfferPriority:             offer.OfferPriority,
-		QualifyingItemMinTotal:    offer.QualifyingItemMinTotal,
-		RequiresRelatedTarQual:    offer.RequiresRelatedTarQual,
-		StartDate:                 offer.StartDate,
-		TargetMinTotal:            offer.TargetMinTotal,
-		TargetSystem:              offer.TargetSystem,
-		TotalitarianOffer:         offer.TotalitarianOffer,
-		UseListForDiscounts:       offer.UseListForDiscounts,
-		CreatedAt:                 offer.CreatedAt,
-		UpdatedAt:                 offer.UpdatedAt,
+// GetActiveOffers retrieves all active offers.
+func (s *offerService) GetActiveOffers(ctx context.Context) ([]*OfferDTO, error) {
+	offers, err := s.offerRepo.FindAll(ctx, &domain.OfferFilter{
+		ActiveOnly: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve active offers: %w", err)
 	}
+
+	offerDTOs := make([]*OfferDTO, len(offers))
+	for i, offer := range offers {
+		offerDTOs[i] = ToOfferDTO(offer)
+	}
+	return offerDTOs, nil
 }
 
-func toOfferCodeDTO(offerCode *domain.OfferCode) *OfferCodeDTO {
-	return &OfferCodeDTO{
-		ID:           offerCode.ID,
-		OfferID:      offerCode.OfferID,
-		Code:         offerCode.Code,
-		MaxUses:      offerCode.MaxUses,
-		Uses:         offerCode.Uses,
-		EmailAddress: offerCode.EmailAddress,
-		StartDate:    offerCode.StartDate,
-		EndDate:      offerCode.EndDate,
-		Archived:     offerCode.Archived,
-		CreatedAt:    offerCode.CreatedAt,
-		UpdatedAt:    offerCode.UpdatedAt,
+// GetOfferByCode retrieves an offer by its code.
+func (s *offerService) GetOfferByCode(ctx context.Context, code string) (*OfferDTO, error) {
+	// First, find the offer code
+	offerCode, err := s.offerCodeRepo.FindByCode(ctx, code)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find offer code: %w", err)
 	}
-}
+	if offerCode == nil {
+		return nil, nil // Offer code not found
+	}
 
-func toOfferItemCriteriaDTO(criteria *domain.OfferItemCriteria) *OfferItemCriteriaDTO {
-	return &OfferItemCriteriaDTO{
-		ID:                 criteria.ID,
-		Quantity:           criteria.Quantity,
-		OrderItemMatchRule: criteria.OrderItemMatchRule,
-		CreatedAt:          criteria.CreatedAt,
-		UpdatedAt:          criteria.UpdatedAt,
+	// Then, get the associated offer
+	offer, err := s.offerRepo.FindByID(ctx, offerCode.OfferID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find offer by ID %d: %w", offerCode.OfferID, err)
 	}
-}
+	if offer == nil {
+		return nil, nil // Offer not found for code
+	}
 
-func toQualCritOfferXrefDTO(xref *domain.QualCritOfferXref) *QualCritOfferXrefDTO {
-	return &QualCritOfferXrefDTO{
-		ID:                  xref.ID,
-		OfferID:             xref.OfferID,
-		OfferItemCriteriaID: xref.OfferItemCriteriaID,
-		CreatedAt:           xref.CreatedAt,
-		UpdatedAt:           xref.UpdatedAt,
-	}
-}
-
-func toTarCritOfferXrefDTO(xref *domain.TarCritOfferXref) *TarCritOfferXrefDTO {
-	return &TarCritOfferXrefDTO{
-		ID:                  xref.ID,
-		OfferID:             xref.OfferID,
-		OfferItemCriteriaID: xref.OfferItemCriteriaID,
-		CreatedAt:           xref.CreatedAt,
-		UpdatedAt:           xref.UpdatedAt,
-	}
-}
-
-func toOfferPriceDataDTO(priceData *domain.OfferPriceData) *OfferPriceDataDTO {
-	return &OfferPriceDataDTO{
-		ID:              priceData.ID,
-		OfferID:         priceData.OfferID,
-		Amount:          priceData.Amount,
-		DiscountType:    priceData.DiscountType,
-		IdentifierType:  priceData.IdentifierType,
-		IdentifierValue: priceData.IdentifierValue,
-		Quantity:        priceData.Quantity,
-		StartDate:       priceData.StartDate,
-		EndDate:         priceData.EndDate,
-		Archived:        priceData.Archived,
-		CreatedAt:       priceData.CreatedAt,
-		UpdatedAt:       priceData.UpdatedAt,
-	}
+	return ToOfferDTO(offer), nil
 }

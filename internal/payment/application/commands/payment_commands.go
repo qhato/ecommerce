@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/qhato/ecommerce/internal/payment/domain"
 	"github.com/qhato/ecommerce/pkg/errors"
@@ -14,12 +13,12 @@ import (
 // PaymentCommandHandler handles payment commands
 type PaymentCommandHandler struct {
 	repo     domain.PaymentRepository
-	eventBus event.EventBus
+	eventBus event.Bus
 	log      *logger.Logger
 }
 
 // NewPaymentCommandHandler creates a new PaymentCommandHandler
-func NewPaymentCommandHandler(repo domain.PaymentRepository, eventBus event.EventBus, log *logger.Logger) *PaymentCommandHandler {
+func NewPaymentCommandHandler(repo domain.PaymentRepository, eventBus event.Bus, log *logger.Logger) *PaymentCommandHandler {
 	return &PaymentCommandHandler{
 		repo:     repo,
 		eventBus: eventBus,
@@ -62,7 +61,7 @@ func (h *PaymentCommandHandler) AuthorizePayment(ctx context.Context, paymentID 
 	// Find payment
 	payment, err := h.repo.FindByID(ctx, paymentID)
 	if err != nil {
-		h.log.Error("Failed to find payment", "error", err)
+		h.log.WithError(err).Error("Failed to find payment")
 		return err
 	}
 	if payment == nil {
@@ -78,19 +77,6 @@ func (h *PaymentCommandHandler) AuthorizePayment(ctx context.Context, paymentID 
 		return errors.InternalWrap(err, "failed to authorize payment")
 	}
 
-	// Publish event
-	evt := &domain.PaymentAuthorizedEvent{
-		BaseEvent:         event.BaseEvent{EventType: domain.EventPaymentAuthorized, Timestamp: time.Now()},
-		PaymentID:         payment.ID,
-		OrderID:           payment.OrderID,
-		TransactionID:     transactionID,
-		AuthorizationCode: authorizationCode,
-		Amount:            payment.Amount,
-	}
-	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.WithError(err).Error("Failed to publish payment authorized event")
-	}
-
 	h.log.WithFields(logger.Fields{"paymentID": paymentID, "orderID": payment.OrderID, "transactionID": transactionID}).Info("Payment authorized successfully")
 	return nil
 }
@@ -102,7 +88,7 @@ func (h *PaymentCommandHandler) CapturePayment(ctx context.Context, paymentID in
 	// Find payment
 	payment, err := h.repo.FindByID(ctx, paymentID)
 	if err != nil {
-		h.log.Error("Failed to find payment", "error", err)
+		h.log.WithError(err).Error("Failed to find payment")
 		return err
 	}
 	if payment == nil {
@@ -120,18 +106,6 @@ func (h *PaymentCommandHandler) CapturePayment(ctx context.Context, paymentID in
 		return errors.InternalWrap(err, "failed to capture payment")
 	}
 
-	// Publish event
-	evt := &domain.PaymentCapturedEvent{
-		BaseEvent:     event.BaseEvent{EventType: domain.EventPaymentCaptured, Timestamp: time.Now()},
-		PaymentID:     payment.ID,
-		OrderID:       payment.OrderID,
-		TransactionID: payment.TransactionID,
-		Amount:        payment.Amount,
-	}
-	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.WithError(err).Error("Failed to publish payment captured event")
-	}
-
 	h.log.WithFields(logger.Fields{"paymentID": paymentID, "orderID": payment.OrderID, "transactionID": transactionID}).Info("Payment captured successfully")
 	return nil
 }
@@ -143,7 +117,7 @@ func (h *PaymentCommandHandler) CompletePayment(ctx context.Context, paymentID i
 	// Find payment
 	payment, err := h.repo.FindByID(ctx, paymentID)
 	if err != nil {
-		h.log.Error("Failed to find payment", "error", err)
+		h.log.WithError(err).Error("Failed to find payment")
 		return err
 	}
 	if payment == nil {
@@ -159,18 +133,6 @@ func (h *PaymentCommandHandler) CompletePayment(ctx context.Context, paymentID i
 		return errors.InternalWrap(err, "failed to complete payment")
 	}
 
-	// Publish event
-	evt := &domain.PaymentCompletedEvent{
-		BaseEvent:     event.BaseEvent{EventType: domain.EventPaymentCompleted, Timestamp: time.Now()},
-		PaymentID:     payment.ID,
-		OrderID:       payment.OrderID,
-		TransactionID: payment.TransactionID,
-		Amount:        payment.Amount,
-	}
-	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.WithError(err).Error("Failed to publish payment completed event")
-	}
-
 	h.log.WithFields(logger.Fields{"paymentID": paymentID, "orderID": payment.OrderID, "transactionID": transactionID}).Info("Payment completed successfully")
 	return nil
 }
@@ -182,7 +144,7 @@ func (h *PaymentCommandHandler) FailPayment(ctx context.Context, paymentID int64
 	// Find payment
 	payment, err := h.repo.FindByID(ctx, paymentID)
 	if err != nil {
-		h.log.Error("Failed to find payment", "error", err)
+		h.log.WithError(err).Error("Failed to find payment")
 		return err
 	}
 	if payment == nil {
@@ -198,18 +160,6 @@ func (h *PaymentCommandHandler) FailPayment(ctx context.Context, paymentID int64
 		return errors.InternalWrap(err, "failed to update payment status")
 	}
 
-	// Publish event
-	evt := &domain.PaymentFailedEvent{
-		BaseEvent:     event.BaseEvent{EventType: domain.EventPaymentFailed, Timestamp: time.Now()},
-		PaymentID:     payment.ID,
-		OrderID:       payment.OrderID,
-		FailureReason: reason,
-		Amount:        payment.Amount,
-	}
-	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.WithError(err).Error("Failed to publish payment failed event")
-	}
-
 	h.log.WithFields(logger.Fields{"paymentID": paymentID, "orderID": payment.OrderID, "reason": reason}).Info("Payment marked as failed")
 	return nil
 }
@@ -221,7 +171,7 @@ func (h *PaymentCommandHandler) RefundPayment(ctx context.Context, paymentID int
 	// Find payment
 	payment, err := h.repo.FindByID(ctx, paymentID)
 	if err != nil {
-		h.log.Error("Failed to find payment", "error", err)
+		h.log.WithError(err).Error("Failed to find payment")
 		return err
 	}
 	if payment == nil {
@@ -244,18 +194,6 @@ func (h *PaymentCommandHandler) RefundPayment(ctx context.Context, paymentID int
 		return errors.InternalWrap(err, "failed to refund payment")
 	}
 
-	// Publish event
-	evt := &domain.PaymentRefundedEvent{
-		BaseEvent:     event.BaseEvent{EventType: domain.EventPaymentRefunded, Timestamp: time.Now()},
-		PaymentID:     payment.ID,
-		OrderID:       payment.OrderID,
-		RefundAmount:  amount,
-		TotalRefunded: payment.RefundAmount,
-	}
-	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.WithError(err).Error("Failed to publish payment refunded event")
-	}
-
 	h.log.WithFields(logger.Fields{"paymentID": paymentID, "orderID": payment.OrderID, "refundAmount": amount, "totalRefunded": payment.RefundAmount}).Info("Payment refunded successfully")
 	return nil
 }
@@ -267,7 +205,7 @@ func (h *PaymentCommandHandler) CancelPayment(ctx context.Context, paymentID int
 	// Find payment
 	payment, err := h.repo.FindByID(ctx, paymentID)
 	if err != nil {
-		h.log.Error("Failed to find payment", "error", err)
+		h.log.WithError(err).Error("Failed to find payment")
 		return err
 	}
 	if payment == nil {

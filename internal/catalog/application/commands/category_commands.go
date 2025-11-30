@@ -61,6 +61,7 @@ type DeleteCategoryCommand struct {
 // CategoryCommandHandler handles category commands
 type CategoryCommandHandler struct {
 	repo      domain.CategoryRepository
+	attrRepo  domain.CategoryAttributeRepository
 	eventBus  event.Bus
 	validator *validator.Validator
 	logger    *logger.Logger
@@ -69,12 +70,14 @@ type CategoryCommandHandler struct {
 // NewCategoryCommandHandler creates a new category command handler
 func NewCategoryCommandHandler(
 	repo domain.CategoryRepository,
+	attrRepo domain.CategoryAttributeRepository,
 	eventBus event.Bus,
 	validator *validator.Validator,
 	logger *logger.Logger,
 ) *CategoryCommandHandler {
 	return &CategoryCommandHandler{
 		repo:      repo,
+		attrRepo:  attrRepo,
 		eventBus:  eventBus,
 		validator: validator,
 		logger:    logger,
@@ -114,17 +117,23 @@ func (h *CategoryCommandHandler) HandleCreateCategory(ctx context.Context, cmd *
 		category.SetActiveDate(cmd.ActiveStartDate, cmd.ActiveEndDate)
 	}
 
-	// Add attributes
-	if cmd.Attributes != nil {
-		for name, value := range cmd.Attributes {
-			category.AddAttribute(name, value)
-		}
-	}
-
 	// Save to repository
 	if err := h.repo.Create(ctx, category); err != nil {
 		h.logger.WithError(err).Error("failed to create category")
 		return 0, errors.InternalWrap(err, "failed to create category")
+	}
+
+	// Add attributes
+	if cmd.Attributes != nil {
+		for name, value := range cmd.Attributes {
+			attr, err := domain.NewCategoryAttribute(category.ID, name, value)
+			if err != nil {
+				return 0, err
+			}
+			if err := h.attrRepo.Save(ctx, attr); err != nil {
+				return 0, errors.InternalWrap(err, "failed to save category attribute")
+			}
+		}
 	}
 
 	// Publish domain event
@@ -195,7 +204,13 @@ func (h *CategoryCommandHandler) HandleUpdateCategory(ctx context.Context, cmd *
 	// Update attributes
 	if cmd.Attributes != nil {
 		for name, value := range cmd.Attributes {
-			category.UpdateAttribute(name, value)
+			attr, err := domain.NewCategoryAttribute(category.ID, name, value)
+			if err != nil {
+				return err
+			}
+			if err := h.attrRepo.Save(ctx, attr); err != nil {
+				return errors.InternalWrap(err, "failed to save category attribute")
+			}
 		}
 		changes["attributes"] = true
 	}
@@ -226,7 +241,7 @@ func (h *CategoryCommandHandler) HandleDeleteCategory(ctx context.Context, cmd *
 	}
 
 	// Check if category exists
-	category, err := h.repo.FindByID(ctx, cmd.ID)
+	_, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
 		return errors.InternalWrap(err, "category not found")
 	}
@@ -237,8 +252,8 @@ func (h *CategoryCommandHandler) HandleDeleteCategory(ctx context.Context, cmd *
 		return errors.InternalWrap(err, "failed to delete category")
 	}
 
-	// Publish domain event (reusing archive event type)
-	event := domain.NewCategoryUpdatedEvent(category.ID, map[string]interface{}{"archived": true})
+	// Publish domain event
+	event := domain.NewCategoryUpdatedEvent(cmd.ID, map[string]interface{}{"archived": true})
 	if err := h.eventBus.Publish(ctx, event); err != nil {
 		h.logger.WithError(err).Error("failed to publish category archived event")
 	}

@@ -18,6 +18,64 @@ require (
 	golang.org/x/crypto v0.45.0
 )
 
+replace github.com/qhato/ecommerce/internal/catalog/application => ./internal/catalog/application
+
+replace github.com/qhato/ecommerce/internal/catalog/application/commands => ./internal/catalog/application/commands
+
+replace github.com/qhato/ecommerce/internal/catalog/application/queries => ./internal/catalog/application/queries
+
+replace github.com/qhato/ecommerce/internal/catalog/infrastructure/persistence => ./internal/catalog/infrastructure/persistence
+
+replace github.com/qhato/ecommerce/internal/catalog/ports/http => ./internal/catalog/ports/http
+
+replace github.com/qhato/ecommerce/internal/customer/application => ./internal/customer/application
+
+replace github.com/qhato/ecommerce/internal/customer/application/commands => ./internal/customer/application/commands
+
+replace github.com/qhato/ecommerce/internal/customer/application/queries => ./internal/customer/application/queries
+
+replace github.com/qhato/ecommerce/internal/customer/infrastructure/persistence => ./internal/customer/infrastructure/persistence
+
+replace github.com/qhato/ecommerce/internal/customer/ports/http => ./internal/customer/ports/http
+
+replace github.com/qhato/ecommerce/internal/order/application => ./internal/order/application
+
+replace github.com/qhato/ecommerce/internal/order/application/commands => ./internal/order/application/commands
+
+replace github.com/qhato/ecommerce/internal/order/application/queries => ./internal/order/application/queries
+
+replace github.com/qhato/ecommerce/internal/order/infrastructure/persistence => ./internal/order/infrastructure/persistence
+
+replace github.com/qhato/ecommerce/internal/order/ports/http => ./internal/order/ports/http
+
+replace github.com/qhato/ecommerce/internal/offer/application => ./internal/offer/application
+
+replace github.com/qhato/ecommerce/internal/offer/domain => ./internal/offer/domain
+
+replace github.com/qhato/ecommerce/internal/offer/infrastructure/persistence => ./internal/offer/infrastructure/persistence
+
+replace github.com/qhato/ecommerce/internal/inventory/application => ./internal/inventory/application
+
+replace github.com/qhato/ecommerce/internal/inventory/domain => ./internal/inventory/domain
+
+replace github.com/qhato/ecommerce/internal/inventory/infrastructure/persistence => ./internal/inventory/infrastructure/persistence
+
+replace github.com/qhato/ecommerce/internal/tax/application => ./internal/tax/application
+
+replace github.com/qhato/ecommerce/internal/payment/application/commands => ./internal/payment/application/commands
+
+replace github.com/qhato/ecommerce/internal/payment/application/queries => ./internal/payment/application/queries
+
+replace github.com/qhato/ecommerce/internal/payment/infrastructure/persistence => ./internal/payment/infrastructure/persistence
+
+replace github.com/qhato/ecommerce/internal/payment/ports/http => ./internal/payment/ports/http
+
+replace github.com/qhato/ecommerce/internal/fulfillment/application/commands => ./internal/fulfillment/application/commands
+
+replace github.com/qhato/ecommerce/internal/fulfillment/infrastructure/persistence => ./internal/fulfillment/infrastructure/persistence
+
+replace github.com/qhato/ecommerce/internal/fulfillment/ports/http => ./internal/fulfillment/ports/http
+
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
