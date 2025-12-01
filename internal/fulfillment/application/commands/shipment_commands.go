@@ -2,10 +2,11 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/qhato/ecommerce/internal/fulfillment/domain"
-	"github.com/qhato/ecommerce/pkg/apperrors"
+	"github.com/qhato/ecommerce/pkg/errors"
 	"github.com/qhato/ecommerce/pkg/event"
 	"github.com/qhato/ecommerce/pkg/logger"
 )
@@ -13,12 +14,12 @@ import (
 // ShipmentCommandHandler handles shipment commands
 type ShipmentCommandHandler struct {
 	repo     domain.ShipmentRepository
-	eventBus event.EventBus
+	eventBus event.Bus
 	log      *logger.Logger
 }
 
 // NewShipmentCommandHandler creates a new ShipmentCommandHandler
-func NewShipmentCommandHandler(repo domain.ShipmentRepository, eventBus event.EventBus, log *logger.Logger) *ShipmentCommandHandler {
+func NewShipmentCommandHandler(repo domain.ShipmentRepository, eventBus event.Bus, log *logger.Logger) *ShipmentCommandHandler {
 	return &ShipmentCommandHandler{
 		repo:     repo,
 		eventBus: eventBus,
@@ -28,39 +29,42 @@ func NewShipmentCommandHandler(repo domain.ShipmentRepository, eventBus event.Ev
 
 // CreateShipment creates a new shipment
 func (h *ShipmentCommandHandler) CreateShipment(ctx context.Context, orderID int64, carrier, shippingMethod string, shippingCost float64, address domain.Address) (*domain.Shipment, error) {
-	h.log.Info("Creating new shipment", "orderID", orderID, "carrier", carrier)
+	h.log.WithFields(map[string]interface{}{
+		"orderID": orderID,
+		"carrier": carrier,
+	}).Info("Creating new shipment")
 
 	// Create shipment
 	shipment := domain.NewShipment(orderID, carrier, shippingMethod, shippingCost, address)
 
 	// Save shipment
 	if err := h.repo.Create(ctx, shipment); err != nil {
-		h.log.Error("Failed to create shipment", "error", err)
-		return nil, apperrors.NewInternalError("failed to create shipment", err)
+		h.log.WithError(err).Error("Failed to create shipment")
+		return nil, errors.InternalWrap(err, "failed to create shipment")
 	}
 
 	// Publish event
 	evt := domain.NewShipmentCreatedEvent(shipment.ID, shipment.OrderID, shipment.Carrier, shipment.ShippingMethod, shipment.ShippingCost)
 	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.Error("Failed to publish shipment created event", "error", err)
+		h.log.WithError(err).Error("Failed to publish shipment created event")
 	}
 
-	h.log.Info("Shipment created successfully", "shipmentID", shipment.ID)
+	h.log.WithField("shipmentID", shipment.ID).Info("Shipment created successfully")
 	return shipment, nil
 }
 
 // ShipShipment marks a shipment as shipped
 func (h *ShipmentCommandHandler) ShipShipment(ctx context.Context, shipmentID int64, trackingNumber string) error {
-	h.log.Info("Marking shipment as shipped", "shipmentID", shipmentID)
+	h.log.WithField("shipmentID", shipmentID).Info("Marking shipment as shipped")
 
 	// Find shipment
 	shipment, err := h.repo.FindByID(ctx, shipmentID)
 	if err != nil {
-		h.log.Error("Failed to find shipment", "error", err)
+		h.log.WithError(err).Error("Failed to find shipment")
 		return err
 	}
 	if shipment == nil {
-		return apperrors.NewNotFoundError("shipment", shipmentID)
+		return errors.NotFound(fmt.Sprintf("shipment %d", shipmentID))
 	}
 
 	// Ship shipment
@@ -68,38 +72,38 @@ func (h *ShipmentCommandHandler) ShipShipment(ctx context.Context, shipmentID in
 
 	// Save shipment
 	if err := h.repo.Update(ctx, shipment); err != nil {
-		h.log.Error("Failed to ship shipment", "error", err)
-		return apperrors.NewInternalError("failed to ship shipment", err)
+		h.log.WithError(err).Error("Failed to ship shipment")
+		return errors.InternalWrap(err, "failed to ship shipment")
 	}
 
 	// Publish event
 	evt := &domain.ShipmentShippedEvent{
-		BaseEvent:      event.BaseEvent{EventType: domain.EventShipmentShipped, Timestamp: time.Now()},
+		BaseEvent:      event.BaseEvent{Type: domain.EventShipmentShipped, OccurredOn: time.Now()},
 		ShipmentID:     shipment.ID,
 		OrderID:        shipment.OrderID,
 		TrackingNumber: trackingNumber,
 		Carrier:        shipment.Carrier,
 	}
 	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.Error("Failed to publish shipment shipped event", "error", err)
+		h.log.WithError(err).Error("Failed to publish shipment shipped event")
 	}
 
-	h.log.Info("Shipment marked as shipped", "shipmentID", shipmentID)
+	h.log.WithField("shipmentID", shipmentID).Info("Shipment marked as shipped")
 	return nil
 }
 
 // DeliverShipment marks a shipment as delivered
 func (h *ShipmentCommandHandler) DeliverShipment(ctx context.Context, shipmentID int64) error {
-	h.log.Info("Marking shipment as delivered", "shipmentID", shipmentID)
+	h.log.WithField("shipmentID", shipmentID).Info("Marking shipment as delivered")
 
 	// Find shipment
 	shipment, err := h.repo.FindByID(ctx, shipmentID)
 	if err != nil {
-		h.log.Error("Failed to find shipment", "error", err)
+		h.log.WithError(err).Error("Failed to find shipment")
 		return err
 	}
 	if shipment == nil {
-		return apperrors.NewNotFoundError("shipment", shipmentID)
+		return errors.NotFound(fmt.Sprintf("shipment %d", shipmentID))
 	}
 
 	// Deliver shipment
@@ -107,76 +111,76 @@ func (h *ShipmentCommandHandler) DeliverShipment(ctx context.Context, shipmentID
 
 	// Save shipment
 	if err := h.repo.Update(ctx, shipment); err != nil {
-		h.log.Error("Failed to deliver shipment", "error", err)
-		return apperrors.NewInternalError("failed to deliver shipment", err)
+		h.log.WithError(err).Error("Failed to deliver shipment")
+		return errors.InternalWrap(err, "failed to deliver shipment")
 	}
 
 	// Publish event
 	evt := &domain.ShipmentDeliveredEvent{
-		BaseEvent:      event.BaseEvent{EventType: domain.EventShipmentDelivered, Timestamp: time.Now()},
+		BaseEvent:      event.BaseEvent{Type: domain.EventShipmentDelivered, OccurredOn: time.Now()},
 		ShipmentID:     shipment.ID,
 		OrderID:        shipment.OrderID,
 		TrackingNumber: shipment.TrackingNumber,
 	}
 	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.Error("Failed to publish shipment delivered event", "error", err)
+		h.log.WithError(err).Error("Failed to publish shipment delivered event")
 	}
 
-	h.log.Info("Shipment marked as delivered", "shipmentID", shipmentID)
+	h.log.WithField("shipmentID", shipmentID).Info("Shipment marked as delivered")
 	return nil
 }
 
 // CancelShipment cancels a shipment
 func (h *ShipmentCommandHandler) CancelShipment(ctx context.Context, shipmentID int64) error {
-	h.log.Info("Cancelling shipment", "shipmentID", shipmentID)
+	h.log.WithField("shipmentID", shipmentID).Info("Cancelling shipment")
 
 	// Find shipment
 	shipment, err := h.repo.FindByID(ctx, shipmentID)
 	if err != nil {
-		h.log.Error("Failed to find shipment", "error", err)
+		h.log.WithError(err).Error("Failed to find shipment")
 		return err
 	}
 	if shipment == nil {
-		return apperrors.NewNotFoundError("shipment", shipmentID)
+		return errors.NotFound(fmt.Sprintf("shipment %d", shipmentID))
 	}
 
 	// Cancel shipment
 	if err := shipment.Cancel(); err != nil {
-		return apperrors.NewValidationError(err.Error())
+		return errors.ValidationError(err.Error())
 	}
 
 	// Save shipment
 	if err := h.repo.Update(ctx, shipment); err != nil {
-		h.log.Error("Failed to cancel shipment", "error", err)
-		return apperrors.NewInternalError("failed to cancel shipment", err)
+		h.log.WithError(err).Error("Failed to cancel shipment")
+		return errors.InternalWrap(err, "failed to cancel shipment")
 	}
 
 	// Publish event
 	evt := &domain.ShipmentCancelledEvent{
-		BaseEvent:  event.BaseEvent{EventType: domain.EventShipmentCancelled, Timestamp: time.Now()},
+		BaseEvent:  event.BaseEvent{Type: domain.EventShipmentCancelled, OccurredOn: time.Now()},
 		ShipmentID: shipment.ID,
 		OrderID:    shipment.OrderID,
 	}
 	if err := h.eventBus.Publish(ctx, evt); err != nil {
-		h.log.Error("Failed to publish shipment cancelled event", "error", err)
+		h.log.WithError(err).Error("Failed to publish shipment cancelled event")
 	}
 
-	h.log.Info("Shipment cancelled successfully", "shipmentID", shipmentID)
+	h.log.WithField("shipmentID", shipmentID).Info("Shipment cancelled successfully")
 	return nil
 }
 
 // UpdateTracking updates shipment tracking information
 func (h *ShipmentCommandHandler) UpdateTracking(ctx context.Context, shipmentID int64, trackingNumber, notes string) error {
-	h.log.Info("Updating shipment tracking", "shipmentID", shipmentID)
+	h.log.WithField("shipmentID", shipmentID).Info("Updating shipment tracking")
 
 	// Find shipment
 	shipment, err := h.repo.FindByID(ctx, shipmentID)
 	if err != nil {
-		h.log.Error("Failed to find shipment", "error", err)
+		h.log.WithError(err).Error("Failed to find shipment")
 		return err
 	}
 	if shipment == nil {
-		return apperrors.NewNotFoundError("shipment", shipmentID)
+		return errors.NotFound(fmt.Sprintf("shipment %d", shipmentID))
 	}
 
 	// Update tracking
@@ -184,10 +188,10 @@ func (h *ShipmentCommandHandler) UpdateTracking(ctx context.Context, shipmentID 
 
 	// Save shipment
 	if err := h.repo.Update(ctx, shipment); err != nil {
-		h.log.Error("Failed to update tracking", "error", err)
-		return apperrors.NewInternalError("failed to update tracking", err)
+		h.log.WithError(err).Error("Failed to update tracking")
+		return errors.InternalWrap(err, "failed to update tracking")
 	}
 
-	h.log.Info("Tracking updated successfully", "shipmentID", shipmentID)
+	h.log.WithField("shipmentID", shipmentID).Info("Tracking updated successfully")
 	return nil
 }

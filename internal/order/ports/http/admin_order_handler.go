@@ -13,6 +13,7 @@ import (
 	httpPkg "github.com/qhato/ecommerce/pkg/http"
 	"github.com/qhato/ecommerce/pkg/logger"
 	"github.com/qhato/ecommerce/pkg/validator"
+	"github.com/qhato/ecommerce/pkg/errors" // Import pkg/errors
 )
 
 // AdminOrderHandler handles admin order HTTP requests
@@ -56,40 +57,33 @@ func (h *AdminOrderHandler) RegisterRoutes(r chi.Router) {
 func (h *AdminOrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var req application.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
 
-	// Convert request items to domain items
-	items := make([]domain.OrderItem, len(req.Items))
-	for i, item := range req.Items {
-		items[i] = domain.OrderItem{
-			SKUID:       item.SKUID,
-			ProductName: item.ProductName,
-			Quantity:    item.Quantity,
-			Price:       item.Price,
-		}
+	cmd := &application.CreateOrderCommand{
+		CustomerID: req.CustomerID,
+		EmailAddress: req.EmailAddress,
+		Name: req.Name,
+		CurrencyCode: req.CurrencyCode,
+		// Other fields as needed
 	}
 
-	order, err := h.commandHandler.CreateOrder(
+	order, err := h.commandHandler.HandleCreateOrder(
 		r.Context(),
-		req.CustomerID,
-		req.EmailAddress,
-		req.Name,
-		req.CurrencyCode,
-		items,
+		cmd,
 	)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to create order", err)
+		httpPkg.RespondError(w, errors.Internal("failed to create order").WithInternal(err))
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusCreated, application.ToOrderDTO(order))
+	httpPkg.RespondJSON(w, http.StatusCreated, order) // Order is already DTO
 }
 
 // GetOrder retrieves an order by ID
@@ -97,34 +91,44 @@ func (h *AdminOrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID").WithInternal(err))
 		return
 	}
 
-	order, err := h.queryHandler.GetByID(r.Context(), id)
+	query := &queries.GetOrderByIDQuery{ID: id}
+	order, err := h.queryHandler.HandleGetOrderByID(r.Context(), query)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "order not found", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to get order").WithInternal(err))
+		}
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusOK, application.ToOrderDTO(order))
+	httpPkg.RespondJSON(w, http.StatusOK, order) // Order is already DTO
 }
 
 // GetOrderByNumber retrieves an order by order number
 func (h *AdminOrderHandler) GetOrderByNumber(w http.ResponseWriter, r *http.Request) {
 	orderNumber := chi.URLParam(r, "orderNumber")
 	if orderNumber == "" {
-		httpPkg.RespondError(w, http.StatusBadRequest, "order number is required", nil)
+		httpPkg.RespondError(w, errors.BadRequest("order number is required"))
 		return
 	}
 
-	order, err := h.queryHandler.GetByOrderNumber(r.Context(), orderNumber)
+	query := &queries.GetOrderByOrderNumberQuery{OrderNumber: orderNumber}
+	order, err := h.queryHandler.HandleGetOrderByOrderNumber(r.Context(), query)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "order not found", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to get order by number").WithInternal(err))
+		}
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusOK, application.ToOrderDTO(order))
+	httpPkg.RespondJSON(w, http.StatusOK, order) // Order is already DTO
 }
 
 // ListOrders lists all orders with optional filtering
@@ -140,45 +144,41 @@ func (h *AdminOrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		pageSize = 20
 	}
 
-	status := r.URL.Query().Get("status")
+	statusStr := r.URL.Query().Get("status")
+	var status *domain.OrderStatus
+	if statusStr != "" {
+		s := domain.OrderStatus(statusStr)
+		status = &s
+	}
+
 	customerIDStr := r.URL.Query().Get("customer_id")
+	var customerID *int64
+	if customerIDStr != "" {
+		id, err := strconv.ParseInt(customerIDStr, 10, 64)
+		if err == nil {
+			customerID = &id
+		}
+	}
+
 	sortBy := r.URL.Query().Get("sort_by")
 	sortOrder := r.URL.Query().Get("sort_order")
 
-	var customerID int64
-	if customerIDStr != "" {
-		customerID, _ = strconv.ParseInt(customerIDStr, 10, 64)
-	}
-
-	filter := &domain.OrderFilter{
+	query := &queries.ListOrdersQuery{
 		Page:       page,
 		PageSize:   pageSize,
-		Status:     domain.OrderStatus(status),
+		Status:     status,
 		CustomerID: customerID,
 		SortBy:     sortBy,
 		SortOrder:  sortOrder,
 	}
 
-	orders, total, err := h.queryHandler.List(r.Context(), filter)
+	result, err := h.queryHandler.HandleListOrders(r.Context(), query)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to list orders", err)
+		httpPkg.RespondError(w, errors.Internal("failed to list orders").WithInternal(err))
 		return
 	}
 
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize > 0 {
-		totalPages++
-	}
-
-	response := application.PaginatedOrderResponse{
-		Data:       application.ToOrderDTOs(orders),
-		Page:       page,
-		PageSize:   pageSize,
-		TotalItems: total,
-		TotalPages: totalPages,
-	}
-
-	httpPkg.RespondJSON(w, http.StatusOK, response)
+	httpPkg.RespondJSON(w, http.StatusOK, result)
 }
 
 // UpdateOrderStatus updates the status of an order
@@ -186,32 +186,33 @@ func (h *AdminOrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Req
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID").WithInternal(err))
 		return
 	}
 
 	var req application.UpdateOrderStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
 
-	err = h.commandHandler.UpdateOrderStatus(r.Context(), id, domain.OrderStatus(req.Status))
+	err = h.commandHandler.HandleUpdateOrderStatus(r.Context(), id, domain.OrderStatus(req.Status))
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to update order status", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to update order status").WithInternal(err))
+		}
 		return
 	}
 
 	// Invalidate cache
-	order, _ := h.queryHandler.GetByID(r.Context(), id)
-	if order != nil {
-		h.queryHandler.InvalidateCache(r.Context(), order.ID, order.OrderNumber)
-	}
+	h.queryHandler.InvalidateCache(r.Context(), id)
 
 	httpPkg.RespondJSON(w, http.StatusOK, map[string]string{"message": "order status updated successfully"})
 }
@@ -221,21 +222,22 @@ func (h *AdminOrderHandler) SubmitOrder(w http.ResponseWriter, r *http.Request) 
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID").WithInternal(err))
 		return
 	}
 
-	err = h.commandHandler.SubmitOrder(r.Context(), id)
+	err = h.commandHandler.HandleSubmitOrder(r.Context(), id)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to submit order", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to submit order").WithInternal(err))
+		}
 		return
 	}
 
 	// Invalidate cache
-	order, _ := h.queryHandler.GetByID(r.Context(), id)
-	if order != nil {
-		h.queryHandler.InvalidateCache(r.Context(), order.ID, order.OrderNumber)
-	}
+	h.queryHandler.InvalidateCache(r.Context(), id)
 
 	httpPkg.RespondJSON(w, http.StatusOK, map[string]string{"message": "order submitted successfully"})
 }
@@ -245,21 +247,22 @@ func (h *AdminOrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) 
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID").WithInternal(err))
 		return
 	}
 
-	err = h.commandHandler.CancelOrder(r.Context(), id)
+	err = h.commandHandler.HandleCancelOrder(r.Context(), id, "admin cancellation") // Added reason
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to cancel order", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to cancel order").WithInternal(err))
+		}
 		return
 	}
 
 	// Invalidate cache
-	order, _ := h.queryHandler.GetByID(r.Context(), id)
-	if order != nil {
-		h.queryHandler.InvalidateCache(r.Context(), order.ID, order.OrderNumber)
-	}
+	h.queryHandler.InvalidateCache(r.Context(), id)
 
 	httpPkg.RespondJSON(w, http.StatusOK, map[string]string{"message": "order cancelled successfully"})
 }
@@ -269,39 +272,33 @@ func (h *AdminOrderHandler) AddOrderItem(w http.ResponseWriter, r *http.Request)
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID").WithInternal(err))
 		return
 	}
 
-	var req application.AddOrderItemRequest
+	var req application.AddItemToOrderCommand // Use correct command struct
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
 
-	err = h.commandHandler.AddOrderItem(
+	item, err := h.commandHandler.HandleAddItemToOrder(
 		r.Context(),
 		id,
-		req.SKUID,
-		req.ProductName,
-		req.Quantity,
-		req.Price,
+		&req, // Pass the command struct
 	)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to add item to order", err)
+		httpPkg.RespondError(w, errors.Internal("failed to add item to order").WithInternal(err))
 		return
 	}
 
 	// Invalidate cache
-	order, _ := h.queryHandler.GetByID(r.Context(), id)
-	if order != nil {
-		h.queryHandler.InvalidateCache(r.Context(), order.ID, order.OrderNumber)
-	}
+	h.queryHandler.InvalidateCache(r.Context(), id)
 
-	httpPkg.RespondJSON(w, http.StatusOK, map[string]string{"message": "item added to order successfully"})
+	httpPkg.RespondJSON(w, http.StatusOK, item)
 }

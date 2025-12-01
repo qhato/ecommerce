@@ -22,10 +22,10 @@ const (
 	ErrCodeTooManyRequests     ErrorCode = "TOO_MANY_REQUESTS"
 
 	// Server errors (5xx)
-	ErrCodeInternal        ErrorCode = "INTERNAL_ERROR"
-	ErrCodeNotImplemented  ErrorCode = "NOT_IMPLEMENTED"
-	ErrCodeServiceUnavail  ErrorCode = "SERVICE_UNAVAILABLE"
-	ErrCodeGatewayTimeout  ErrorCode = "GATEWAY_TIMEOUT"
+	ErrCodeInternal       ErrorCode = "INTERNAL_ERROR"
+	ErrCodeNotImplemented ErrorCode = "NOT_IMPLEMENTED"
+	ErrCodeServiceUnavail ErrorCode = "SERVICE_UNAVAILABLE"
+	ErrCodeGatewayTimeout ErrorCode = "GATEWAY_TIMEOUT"
 
 	// Business logic errors
 	ErrCodeInsufficientStock ErrorCode = "INSUFFICIENT_STOCK"
@@ -210,4 +210,31 @@ func OrderNotEditable(orderID string, status string) *AppError {
 		http.StatusConflict,
 	).WithDetail("order_id", orderID).
 		WithDetail("status", status)
+}
+
+// IsConflict checks if the error is a conflict error
+func IsConflict(err error) bool {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		return appErr.Code == ErrCodeConflict
+	}
+	return false
+}
+
+// IsNotFound checks if the error is a not found error
+func IsNotFound(err error) bool {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		return appErr.Code == ErrCodeNotFound
+	}
+	return false
+}
+
+// IsUnauthorized checks if the error is an unauthorized error
+func IsUnauthorized(err error) bool {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		return appErr.Code == ErrCodeUnauthorized
+	}
+	return false
 }

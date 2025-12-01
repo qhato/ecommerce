@@ -86,7 +86,7 @@ func (h *StorefrontCatalogHandler) ListProducts(w http.ResponseWriter, r *http.R
 
 	result, err := h.productQueryHandler.HandleListProducts(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list products", "error", err)
+		h.logger.WithError(err).Error("failed to list products")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -106,7 +106,7 @@ func (h *StorefrontCatalogHandler) GetProduct(w http.ResponseWriter, r *http.Req
 	query := &queries.GetProductByIDQuery{ID: id}
 	product, err := h.productQueryHandler.HandleGetProductByID(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get product", "error", err, "product_id", id)
+		h.logger.WithError(err).WithField("product_id", id).Error("failed to get product")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -131,7 +131,7 @@ func (h *StorefrontCatalogHandler) GetProductByURL(w http.ResponseWriter, r *htt
 	query := &queries.GetProductByURLQuery{URL: url}
 	product, err := h.productQueryHandler.HandleGetProductByURL(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get product by URL", "error", err, "url", url)
+		h.logger.WithError(err).WithField("url", url).Error("failed to get product by URL")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -171,7 +171,7 @@ func (h *StorefrontCatalogHandler) SearchProducts(w http.ResponseWriter, r *http
 
 	result, err := h.productQueryHandler.HandleSearchProducts(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to search products", "error", err)
+		h.logger.WithError(err).Error("failed to search products")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -212,7 +212,7 @@ func (h *StorefrontCatalogHandler) ListProductsByCategory(w http.ResponseWriter,
 
 	result, err := h.productQueryHandler.HandleListProductsByCategory(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list products by category", "error", err, "category_id", id)
+		h.logger.WithError(err).WithField("category_id", id).Error("failed to list products by category")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -248,7 +248,7 @@ func (h *StorefrontCatalogHandler) ListRootCategories(w http.ResponseWriter, r *
 
 	result, err := h.categoryQueryHandler.HandleListRootCategories(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list root categories", "error", err)
+		h.logger.WithError(err).Error("failed to list root categories")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -268,7 +268,7 @@ func (h *StorefrontCatalogHandler) GetCategory(w http.ResponseWriter, r *http.Re
 	query := &queries.GetCategoryByIDQuery{ID: id}
 	category, err := h.categoryQueryHandler.HandleGetCategoryByID(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get category", "error", err, "category_id", id)
+		h.logger.WithError(err).WithField("category_id", id).Error("failed to get category")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -293,7 +293,7 @@ func (h *StorefrontCatalogHandler) GetCategoryByURL(w http.ResponseWriter, r *ht
 	query := &queries.GetCategoryByURLQuery{URL: url}
 	category, err := h.categoryQueryHandler.HandleGetCategoryByURL(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get category by URL", "error", err, "url", url)
+		h.logger.WithError(err).WithField("url", url).Error("failed to get category by URL")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -335,7 +335,7 @@ func (h *StorefrontCatalogHandler) ListChildCategories(w http.ResponseWriter, r 
 
 	result, err := h.categoryQueryHandler.HandleListCategoriesByParent(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list child categories", "error", err, "parent_id", id)
+		h.logger.WithError(err).WithField("parent_id", id).Error("failed to list child categories")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -355,7 +355,7 @@ func (h *StorefrontCatalogHandler) GetCategoryPath(w http.ResponseWriter, r *htt
 	query := &queries.GetCategoryPathQuery{CategoryID: id}
 	path, err := h.categoryQueryHandler.HandleGetCategoryPath(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get category path", "error", err, "category_id", id)
+		h.logger.WithError(err).WithField("category_id", id).Error("failed to get category path")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -391,7 +391,7 @@ func (h *StorefrontCatalogHandler) ListSKUs(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.skuQueryHandler.HandleListSKUs(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list SKUs", "error", err)
+		h.logger.WithError(err).Error("failed to list SKUs")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -411,7 +411,7 @@ func (h *StorefrontCatalogHandler) GetSKU(w http.ResponseWriter, r *http.Request
 	query := &queries.GetSKUByIDQuery{ID: id}
 	sku, err := h.skuQueryHandler.HandleGetSKUByID(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get SKU", "error", err, "sku_id", id)
+		h.logger.WithError(err).WithField("sku_id", id).Error("failed to get SKU")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -436,7 +436,7 @@ func (h *StorefrontCatalogHandler) GetSKUByUPC(w http.ResponseWriter, r *http.Re
 	query := &queries.GetSKUByUPCQuery{UPC: upc}
 	sku, err := h.skuQueryHandler.HandleGetSKUByUPC(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get SKU by UPC", "error", err, "upc", upc)
+		h.logger.WithError(err).WithField("upc", upc).Error("failed to get SKU by UPC")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -456,13 +456,13 @@ func (h *StorefrontCatalogHandler) ListSKUsByProduct(w http.ResponseWriter, r *h
 	query := &queries.ListSKUsByProductQuery{ProductID: productID}
 	skus, err := h.skuQueryHandler.HandleListSKUsByProduct(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list SKUs by product", "error", err, "product_id", productID)
+		h.logger.WithError(err).WithField("product_id", productID).Error("failed to list SKUs by product")
 		pkghttp.RespondError(w, err)
 		return
 	}
 
 	// Filter only available and active SKUs for storefront
-	var availableSKUs []*application.SKUDTO
+	var availableSKUs []*application.SkuDTO
 	for _, sku := range skus {
 		if sku.Available && sku.IsActive {
 			availableSKUs = append(availableSKUs, sku)

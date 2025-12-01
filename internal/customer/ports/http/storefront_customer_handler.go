@@ -6,12 +6,12 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/qhato/ecommerce/internal/customer/application"
 	"github.com/qhato/ecommerce/internal/customer/application/commands"
 	"github.com/qhato/ecommerce/internal/customer/application/queries"
 	httpPkg "github.com/qhato/ecommerce/pkg/http"
 	"github.com/qhato/ecommerce/pkg/logger"
 	"github.com/qhato/ecommerce/pkg/validator"
+	"github.com/qhato/ecommerce/pkg/errors" // Import pkg/errors
 )
 
 // StorefrontCustomerHandler handles storefront customer HTTP requests
@@ -49,34 +49,30 @@ func (h *StorefrontCustomerHandler) RegisterRoutes(r chi.Router) {
 
 // RegisterCustomer registers a new customer
 func (h *StorefrontCustomerHandler) RegisterCustomer(w http.ResponseWriter, r *http.Request) {
-	var req application.RegisterCustomerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+	var cmd commands.RegisterCustomerCommand // Use commands.RegisterCustomerCommand
+	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
-	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+	if err := h.validator.Validate(cmd); err != nil {
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
 
-	customer, err := h.commandHandler.RegisterCustomer(
-		r.Context(),
-		req.EmailAddress,
-		req.UserName,
-		req.Password,
-		req.FirstName,
-		req.LastName,
-	)
+	customerID, err := h.commandHandler.HandleRegisterCustomer(r.Context(), &cmd) // Call HandleRegisterCustomer
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to register customer", err)
+		if errors.IsConflict(err) {
+			httpPkg.RespondError(w, errors.Conflict(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to register customer").WithInternal(err))
+		}
 		return
 	}
 
-	// Don't return password in response
-	dto := application.ToCustomerDTO(customer)
-
-	httpPkg.RespondJSON(w, http.StatusCreated, dto)
+	httpPkg.RespondJSON(w, http.StatusCreated, map[string]interface{}{
+		"id": customerID,
+	})
 }
 
 // GetProfile retrieves a customer's profile
@@ -84,20 +80,25 @@ func (h *StorefrontCustomerHandler) GetProfile(w http.ResponseWriter, r *http.Re
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
 
 	// TODO: In production, verify that the authenticated user matches this ID
 	// or has appropriate permissions
 
-	customer, err := h.queryHandler.GetByID(r.Context(), id)
+	query := &queries.GetCustomerByIDQuery{ID: id}
+	customer, err := h.queryHandler.HandleGetCustomerByID(r.Context(), query) // Call HandleGetCustomerByID
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "customer not found", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to get customer").WithInternal(err))
+		}
 		return
 	}
 
-	httpPkg.RespondJSON(w, http.StatusOK, application.ToCustomerDTO(customer))
+	httpPkg.RespondJSON(w, http.StatusOK, customer) // Removed redundant application.ToCustomerDTO(customer)
 }
 
 // UpdateProfile updates a customer's profile
@@ -105,26 +106,33 @@ func (h *StorefrontCustomerHandler) UpdateProfile(w http.ResponseWriter, r *http
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
 
 	// TODO: In production, verify that the authenticated user matches this ID
 
-	var req application.UpdateCustomerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+	var cmd commands.UpdateCustomerCommand // Use commands.UpdateCustomerCommand
+	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
-	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+	if err := h.validator.Validate(cmd); err != nil {
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
+	cmd.ID = id // Set ID from URL param
 
-	err = h.commandHandler.UpdateCustomer(r.Context(), id, req.FirstName, req.LastName, req.EmailAddress)
+	err = h.commandHandler.HandleUpdateCustomer(r.Context(), &cmd) // Call HandleUpdateCustomer
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to update profile", err)
+		if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else if errors.IsConflict(err) {
+			httpPkg.RespondError(w, errors.Conflict(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to update customer").WithInternal(err))
+		}
 		return
 	}
 
@@ -139,27 +147,34 @@ func (h *StorefrontCustomerHandler) ChangePassword(w http.ResponseWriter, r *htt
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid customer ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid customer ID").WithInternal(err))
 		return
 	}
 
 	// TODO: In production, verify that the authenticated user matches this ID
 	// and validate old password before changing
 
-	var req application.ChangePasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+	var cmd commands.ChangePasswordCommand // Use commands.ChangePasswordCommand
+	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
-	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+	if err := h.validator.Validate(cmd); err != nil {
+		httpPkg.RespondError(w, errors.ValidationError("validation failed").WithInternal(err))
 		return
 	}
+	cmd.CustomerID = id // Set customer ID
 
-	err = h.commandHandler.ChangePassword(r.Context(), id, req.NewPassword)
+	err = h.commandHandler.HandleChangePassword(r.Context(), &cmd) // Call HandleChangePassword
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to change password", err)
+		if errors.IsUnauthorized(err) {
+			httpPkg.RespondError(w, errors.Unauthorized(err.Error()))
+		} else if errors.IsNotFound(err) {
+			httpPkg.RespondError(w, errors.NotFound(err.Error()))
+		} else {
+			httpPkg.RespondError(w, errors.Internal("failed to change password").WithInternal(err))
+		}
 		return
 	}
 

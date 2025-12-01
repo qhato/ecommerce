@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/qhato/ecommerce/internal/payment/domain"
-	"github.com/qhato/ecommerce/pkg/apperrors"
 	"github.com/qhato/ecommerce/pkg/cache"
+	"github.com/qhato/ecommerce/pkg/errors"
 	"github.com/qhato/ecommerce/pkg/logger"
 )
 
@@ -30,14 +30,14 @@ func NewPaymentQueryHandler(repo domain.PaymentRepository, cache cache.Cache, lo
 
 // GetByID retrieves a payment by ID
 func (h *PaymentQueryHandler) GetByID(ctx context.Context, id int64) (*domain.Payment, error) {
-	h.log.Debug("Fetching payment by ID", "id", id)
+	h.log.WithField("id", id).Debug("Fetching payment by ID")
 
 	// Try cache first
 	cacheKey := fmt.Sprintf("payment:id:%d", id)
-	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && len(cached) > 0 {
 		var payment domain.Payment
-		if err := json.Unmarshal([]byte(cached), &payment); err == nil {
-			h.log.Debug("Payment found in cache", "id", id)
+		if err := json.Unmarshal(cached, &payment); err == nil {
+			h.log.WithField("id", id).Debug("Payment found in cache")
 			return &payment, nil
 		}
 	}
@@ -45,16 +45,16 @@ func (h *PaymentQueryHandler) GetByID(ctx context.Context, id int64) (*domain.Pa
 	// Fetch from repository
 	payment, err := h.repo.FindByID(ctx, id)
 	if err != nil {
-		h.log.Error("Failed to fetch payment by ID", "error", err)
+		h.log.WithError(err).Error("Failed to fetch payment by ID")
 		return nil, err
 	}
 	if payment == nil {
-		return nil, apperrors.NewNotFoundError("payment", id)
+		return nil, errors.NotFound(fmt.Sprintf("payment %d", id))
 	}
 
 	// Cache result
 	if data, err := json.Marshal(payment); err == nil {
-		_ = h.cache.Set(ctx, cacheKey, string(data), 5*time.Minute)
+		_ = h.cache.Set(ctx, cacheKey, data, 5*time.Minute)
 	}
 
 	return payment, nil
@@ -62,14 +62,14 @@ func (h *PaymentQueryHandler) GetByID(ctx context.Context, id int64) (*domain.Pa
 
 // GetByTransactionID retrieves a payment by transaction ID
 func (h *PaymentQueryHandler) GetByTransactionID(ctx context.Context, transactionID string) (*domain.Payment, error) {
-	h.log.Debug("Fetching payment by transaction ID", "transactionID", transactionID)
+	h.log.WithField("transactionID", transactionID).Debug("Fetching payment by transaction ID")
 
 	// Try cache first
 	cacheKey := fmt.Sprintf("payment:txn:%s", transactionID)
-	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+	if cached, err := h.cache.Get(ctx, cacheKey); err == nil && len(cached) > 0 {
 		var payment domain.Payment
-		if err := json.Unmarshal([]byte(cached), &payment); err == nil {
-			h.log.Debug("Payment found in cache", "transactionID", transactionID)
+		if err := json.Unmarshal(cached, &payment); err == nil {
+			h.log.WithField("transactionID", transactionID).Debug("Payment found in cache")
 			return &payment, nil
 		}
 	}
@@ -77,16 +77,16 @@ func (h *PaymentQueryHandler) GetByTransactionID(ctx context.Context, transactio
 	// Fetch from repository
 	payment, err := h.repo.FindByTransactionID(ctx, transactionID)
 	if err != nil {
-		h.log.Error("Failed to fetch payment by transaction ID", "error", err)
+		h.log.WithError(err).Error("Failed to fetch payment by transaction ID")
 		return nil, err
 	}
 	if payment == nil {
-		return nil, apperrors.NewNotFoundError("payment with transaction ID", transactionID)
+		return nil, errors.NotFound(fmt.Sprintf("payment with transaction ID %s", transactionID))
 	}
 
 	// Cache result
 	if data, err := json.Marshal(payment); err == nil {
-		_ = h.cache.Set(ctx, cacheKey, string(data), 5*time.Minute)
+		_ = h.cache.Set(ctx, cacheKey, data, 5*time.Minute)
 	}
 
 	return payment, nil
@@ -94,11 +94,11 @@ func (h *PaymentQueryHandler) GetByTransactionID(ctx context.Context, transactio
 
 // ListByOrder retrieves payments for an order
 func (h *PaymentQueryHandler) ListByOrder(ctx context.Context, orderID int64) ([]*domain.Payment, error) {
-	h.log.Debug("Fetching payments by order", "orderID", orderID)
+	h.log.WithField("orderID", orderID).Debug("Fetching payments by order")
 
 	payments, err := h.repo.FindByOrderID(ctx, orderID)
 	if err != nil {
-		h.log.Error("Failed to fetch payments by order", "error", err)
+		h.log.WithError(err).Error("Failed to fetch payments by order")
 		return nil, err
 	}
 
@@ -107,11 +107,11 @@ func (h *PaymentQueryHandler) ListByOrder(ctx context.Context, orderID int64) ([
 
 // ListByCustomer retrieves payments for a customer
 func (h *PaymentQueryHandler) ListByCustomer(ctx context.Context, customerID int64, filter *domain.PaymentFilter) ([]*domain.Payment, int64, error) {
-	h.log.Debug("Fetching payments by customer", "customerID", customerID)
+	h.log.WithField("customerID", customerID).Debug("Fetching payments by customer")
 
 	payments, total, err := h.repo.FindByCustomerID(ctx, customerID, filter)
 	if err != nil {
-		h.log.Error("Failed to fetch payments by customer", "error", err)
+		h.log.WithError(err).Error("Failed to fetch payments by customer")
 		return nil, 0, err
 	}
 
@@ -120,11 +120,11 @@ func (h *PaymentQueryHandler) ListByCustomer(ctx context.Context, customerID int
 
 // List retrieves all payments with optional filtering
 func (h *PaymentQueryHandler) List(ctx context.Context, filter *domain.PaymentFilter) ([]*domain.Payment, int64, error) {
-	h.log.Debug("Fetching all payments with filter", "filter", filter)
+	h.log.WithField("filter", filter).Debug("Fetching all payments with filter")
 
 	payments, total, err := h.repo.FindAll(ctx, filter)
 	if err != nil {
-		h.log.Error("Failed to fetch payments", "error", err)
+		h.log.WithError(err).Error("Failed to fetch payments")
 		return nil, 0, err
 	}
 

@@ -16,11 +16,11 @@ type ShipmentRepository interface {
 
 // ShipmentFilter represents filtering options for shipments
 type ShipmentFilter struct {
-	Page       int
-	PageSize   int
-	Status     ShipmentStatus
-	Carrier    string
-	OrderID    int64
-	SortBy     string
-	SortOrder  string
+	Page      int
+	PageSize  int
+	Status    ShipmentStatus
+	Carrier   string
+	OrderID   int64
+	SortBy    string
+	SortOrder string
 }

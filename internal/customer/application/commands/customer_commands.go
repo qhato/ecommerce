@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/qhato/ecommerce/internal/customer/domain"
 	"github.com/qhato/ecommerce/pkg/auth"
@@ -9,6 +10,7 @@ import (
 	"github.com/qhato/ecommerce/pkg/event"
 	"github.com/qhato/ecommerce/pkg/logger"
 	"github.com/qhato/ecommerce/pkg/validator"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // RegisterCustomerCommand represents a command to register a new customer
@@ -23,12 +25,12 @@ type RegisterCustomerCommand struct {
 
 // UpdateCustomerCommand represents a command to update customer profile
 type UpdateCustomerCommand struct {
-	ID           int64              `json:"id" validate:"required"`
-	FirstName    string             `json:"first_name,omitempty"`
-	LastName     string             `json:"last_name,omitempty"`
-	EmailAddress string             `json:"email_address,omitempty" validate:"omitempty,email"`
-	ReceiveEmail *bool              `json:"receive_email,omitempty"`
-	Attributes   map[string]string  `json:"attributes,omitempty"`
+	ID           int64             `json:"id" validate:"required"`
+	FirstName    string            `json:"first_name,omitempty"`
+	LastName     string            `json:"last_name,omitempty"`
+	EmailAddress string            `json:"email_address,omitempty" validate:"omitempty,email"`
+	ReceiveEmail *bool             `json:"receive_email,omitempty"`
+	Attributes   map[string]string `json:"attributes,omitempty"`
 }
 
 // ChangePasswordCommand represents a command to change password
@@ -50,10 +52,11 @@ type ActivateCustomerCommand struct {
 
 // CustomerCommandHandler handles customer commands
 type CustomerCommandHandler struct {
-	repo      domain.CustomerRepository
-	eventBus  event.Bus
-	validator *validator.Validator
-	logger    *logger.Logger
+	repo            domain.CustomerRepository
+	eventBus        event.Bus
+	validator       *validator.Validator
+	logger          *logger.Logger
+	passwordService *auth.PasswordService
 }
 
 // NewCustomerCommandHandler creates a new customer command handler
@@ -64,10 +67,11 @@ func NewCustomerCommandHandler(
 	logger *logger.Logger,
 ) *CustomerCommandHandler {
 	return &CustomerCommandHandler{
-		repo:      repo,
-		eventBus:  eventBus,
-		validator: validator,
-		logger:    logger,
+		repo:            repo,
+		eventBus:        eventBus,
+		validator:       validator,
+		logger:          logger,
+		passwordService: auth.NewPasswordService(bcrypt.DefaultCost),
 	}
 }
 
@@ -75,31 +79,31 @@ func NewCustomerCommandHandler(
 func (h *CustomerCommandHandler) HandleRegisterCustomer(ctx context.Context, cmd *RegisterCustomerCommand) (int64, error) {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return 0, errors.NewValidationError("invalid register customer command", err)
+		return 0, errors.ValidationError("invalid register customer command").WithInternal(err)
 	}
 
 	// Check if email already exists
 	exists, err := h.repo.ExistsByEmail(ctx, cmd.EmailAddress)
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to check email existence")
+		return 0, errors.InternalWrap(err, "failed to check email existence")
 	}
 	if exists {
-		return 0, errors.NewBusinessError("email address already registered")
+		return 0, errors.Conflict("email address already registered")
 	}
 
 	// Check if username already exists
 	exists, err = h.repo.ExistsByUsername(ctx, cmd.UserName)
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to check username existence")
+		return 0, errors.InternalWrap(err, "failed to check username existence")
 	}
 	if exists {
-		return 0, errors.NewBusinessError("username already taken")
+		return 0, errors.Conflict("username already taken")
 	}
 
 	// Hash password
-	hashedPassword, err := auth.HashPassword(cmd.Password)
+	hashedPassword, err := h.passwordService.HashPassword(cmd.Password)
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to hash password")
+		return 0, errors.InternalWrap(err, "failed to hash password")
 	}
 
 	// Create customer entity
@@ -114,8 +118,8 @@ func (h *CustomerCommandHandler) HandleRegisterCustomer(ctx context.Context, cmd
 
 	// Save to repository
 	if err := h.repo.Create(ctx, customer); err != nil {
-		h.logger.Error("failed to register customer", "error", err)
-		return 0, errors.Wrap(err, "failed to register customer")
+		h.logger.WithError(err).Error("failed to register customer")
+		return 0, errors.InternalWrap(err, "failed to register customer")
 	}
 
 	// Publish domain event
@@ -127,10 +131,10 @@ func (h *CustomerCommandHandler) HandleRegisterCustomer(ctx context.Context, cmd
 		customer.LastName,
 	)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish customer registered event", "error", err)
+		h.logger.WithError(err).Error("failed to publish customer registered event")
 	}
 
-	h.logger.Info("customer registered", "customer_id", customer.ID, "email", customer.EmailAddress)
+	h.logger.WithField("customer_id", customer.ID).WithField("email", customer.EmailAddress).Info("customer registered")
 	return customer.ID, nil
 }
 
@@ -138,17 +142,17 @@ func (h *CustomerCommandHandler) HandleRegisterCustomer(ctx context.Context, cmd
 func (h *CustomerCommandHandler) HandleUpdateCustomer(ctx context.Context, cmd *UpdateCustomerCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid update customer command", err)
+		return errors.ValidationError("invalid update customer command").WithInternal(err)
 	}
 
 	// Find existing customer
 	customer, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "customer not found")
+		return errors.Wrap(err, errors.ErrCodeNotFound, "customer not found", http.StatusNotFound)
 	}
 
 	if !customer.IsActive() {
-		return errors.NewBusinessError("cannot update inactive customer")
+		return errors.Forbidden("cannot update inactive customer")
 	}
 
 	// Track changes for event
@@ -173,10 +177,10 @@ func (h *CustomerCommandHandler) HandleUpdateCustomer(ctx context.Context, cmd *
 		if emailAddress != customer.EmailAddress {
 			exists, err := h.repo.ExistsByEmail(ctx, emailAddress)
 			if err != nil {
-				return errors.Wrap(err, "failed to check email existence")
+				return errors.InternalWrap(err, "failed to check email existence")
 			}
 			if exists {
-				return errors.NewBusinessError("email address already in use")
+				return errors.Conflict("email address already in use")
 			}
 			changes["email"] = emailAddress
 		}
@@ -206,19 +210,19 @@ func (h *CustomerCommandHandler) HandleUpdateCustomer(ctx context.Context, cmd *
 
 	// Save to repository
 	if err := h.repo.Update(ctx, customer); err != nil {
-		h.logger.Error("failed to update customer", "error", err, "customer_id", cmd.ID)
-		return errors.Wrap(err, "failed to update customer")
+		h.logger.WithError(err).WithField("customer_id", cmd.ID).Error("failed to update customer")
+		return errors.InternalWrap(err, "failed to update customer")
 	}
 
 	// Publish domain event
 	if len(changes) > 0 {
 		event := domain.NewCustomerUpdatedEvent(customer.ID, changes)
 		if err := h.eventBus.Publish(ctx, event); err != nil {
-			h.logger.Error("failed to publish customer updated event", "error", err)
+			h.logger.WithError(err).Error("failed to publish customer updated event")
 		}
 	}
 
-	h.logger.Info("customer updated", "customer_id", customer.ID)
+	h.logger.WithField("customer_id", customer.ID).Info("customer updated")
 	return nil
 }
 
@@ -226,39 +230,39 @@ func (h *CustomerCommandHandler) HandleUpdateCustomer(ctx context.Context, cmd *
 func (h *CustomerCommandHandler) HandleChangePassword(ctx context.Context, cmd *ChangePasswordCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid change password command", err)
+		return errors.ValidationError("invalid change password command").WithInternal(err)
 	}
 
 	// Find customer
 	customer, err := h.repo.FindByID(ctx, cmd.CustomerID)
 	if err != nil {
-		return errors.Wrap(err, "customer not found")
+		return errors.Wrap(err, errors.ErrCodeNotFound, "customer not found", http.StatusNotFound)
 	}
 
 	// Verify old password
-	if !auth.CheckPassword(cmd.OldPassword, customer.Password) {
-		return errors.NewBusinessError("invalid old password")
+	if err := h.passwordService.VerifyPassword(customer.Password, cmd.OldPassword); err != nil {
+		return errors.Unauthorized("invalid old password")
 	}
 
 	// Hash new password
-	hashedPassword, err := auth.HashPassword(cmd.NewPassword)
+	hashedPassword, err := h.passwordService.HashPassword(cmd.NewPassword)
 	if err != nil {
-		return errors.Wrap(err, "failed to hash password")
+		return errors.InternalWrap(err, "failed to hash password")
 	}
 
 	// Update password
 	if err := h.repo.UpdatePassword(ctx, customer.ID, hashedPassword); err != nil {
-		h.logger.Error("failed to change password", "error", err, "customer_id", cmd.CustomerID)
-		return errors.Wrap(err, "failed to change password")
+		h.logger.WithError(err).WithField("customer_id", cmd.CustomerID).Error("failed to change password")
+		return errors.InternalWrap(err, "failed to change password")
 	}
 
 	// Publish domain event
 	event := domain.NewCustomerPasswordChangedEvent(customer.ID)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish password changed event", "error", err)
+		h.logger.WithError(err).Error("failed to publish password changed event")
 	}
 
-	h.logger.Info("password changed", "customer_id", customer.ID)
+	h.logger.WithField("customer_id", customer.ID).Info("password changed")
 	return nil
 }
 
@@ -266,17 +270,17 @@ func (h *CustomerCommandHandler) HandleChangePassword(ctx context.Context, cmd *
 func (h *CustomerCommandHandler) HandleDeactivateCustomer(ctx context.Context, cmd *DeactivateCustomerCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid deactivate customer command", err)
+		return errors.ValidationError("invalid deactivate customer command").WithInternal(err)
 	}
 
 	// Find customer
 	customer, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "customer not found")
+		return errors.Wrap(err, errors.ErrCodeNotFound, "customer not found", http.StatusNotFound)
 	}
 
 	if customer.Deactivated {
-		return errors.NewBusinessError("customer is already deactivated")
+		return errors.Conflict("customer is already deactivated")
 	}
 
 	// Deactivate customer
@@ -284,17 +288,17 @@ func (h *CustomerCommandHandler) HandleDeactivateCustomer(ctx context.Context, c
 
 	// Save to repository
 	if err := h.repo.Update(ctx, customer); err != nil {
-		h.logger.Error("failed to deactivate customer", "error", err, "customer_id", cmd.ID)
-		return errors.Wrap(err, "failed to deactivate customer")
+		h.logger.WithError(err).WithField("customer_id", cmd.ID).Error("failed to deactivate customer")
+		return errors.InternalWrap(err, "failed to deactivate customer")
 	}
 
 	// Publish domain event
 	event := domain.NewCustomerDeactivatedEvent(customer.ID)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish customer deactivated event", "error", err)
+		h.logger.WithError(err).Error("failed to publish customer deactivated event")
 	}
 
-	h.logger.Info("customer deactivated", "customer_id", cmd.ID)
+	h.logger.WithField("customer_id", cmd.ID).Info("customer deactivated")
 	return nil
 }
 
@@ -302,17 +306,17 @@ func (h *CustomerCommandHandler) HandleDeactivateCustomer(ctx context.Context, c
 func (h *CustomerCommandHandler) HandleActivateCustomer(ctx context.Context, cmd *ActivateCustomerCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid activate customer command", err)
+		return errors.ValidationError("invalid activate customer command").WithInternal(err)
 	}
 
 	// Find customer
 	customer, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "customer not found")
+		return errors.Wrap(err, errors.ErrCodeNotFound, "customer not found", http.StatusNotFound)
 	}
 
 	if !customer.Deactivated {
-		return errors.NewBusinessError("customer is already active")
+		return errors.Conflict("customer is already active")
 	}
 
 	// Activate customer
@@ -320,16 +324,16 @@ func (h *CustomerCommandHandler) HandleActivateCustomer(ctx context.Context, cmd
 
 	// Save to repository
 	if err := h.repo.Update(ctx, customer); err != nil {
-		h.logger.Error("failed to activate customer", "error", err, "customer_id", cmd.ID)
-		return errors.Wrap(err, "failed to activate customer")
+		h.logger.WithError(err).WithField("customer_id", cmd.ID).Error("failed to activate customer")
+		return errors.InternalWrap(err, "failed to activate customer")
 	}
 
 	// Publish domain event
 	event := domain.NewCustomerActivatedEvent(customer.ID)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish customer activated event", "error", err)
+		h.logger.WithError(err).Error("failed to publish customer activated event")
 	}
 
-	h.logger.Info("customer activated", "customer_id", cmd.ID)
+	h.logger.WithField("customer_id", cmd.ID).Info("customer activated")
 	return nil
 }

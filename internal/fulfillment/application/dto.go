@@ -8,20 +8,20 @@ import (
 
 // ShipmentDTO represents shipment data for transfer
 type ShipmentDTO struct {
-	ID              int64       `json:"id"`
-	OrderID         int64       `json:"order_id"`
-	Status          string      `json:"status"`
-	TrackingNumber  string      `json:"tracking_number,omitempty"`
-	Carrier         string      `json:"carrier"`
-	ShippingMethod  string      `json:"shipping_method"`
-	ShippingCost    float64     `json:"shipping_cost"`
-	EstimatedDate   *time.Time  `json:"estimated_date,omitempty"`
-	ShippedDate     *time.Time  `json:"shipped_date,omitempty"`
-	DeliveredDate   *time.Time  `json:"delivered_date,omitempty"`
-	ShippingAddress AddressDTO  `json:"shipping_address"`
-	Notes           string      `json:"notes,omitempty"`
-	CreatedAt       time.Time   `json:"created_at"`
-	UpdatedAt       time.Time   `json:"updated_at"`
+	ID              int64      `json:"id"`
+	OrderID         int64      `json:"order_id"`
+	Status          string     `json:"status"`
+	TrackingNumber  string     `json:"tracking_number,omitempty"`
+	Carrier         string     `json:"carrier"`
+	ShippingMethod  string     `json:"shipping_method"`
+	ShippingCost    float64    `json:"shipping_cost"`
+	EstimatedDate   *time.Time `json:"estimated_date,omitempty"`
+	ShippedDate     *time.Time `json:"shipped_date,omitempty"`
+	DeliveredDate   *time.Time `json:"delivered_date,omitempty"`
+	ShippingAddress AddressDTO `json:"shipping_address"`
+	Notes           string     `json:"notes,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // AddressDTO represents address data for transfer

@@ -1,43 +1,32 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // Category represents a product category
 type Category struct {
-	ID                       int64
-	Name                     string
-	Description              string
-	LongDescription          string
-	ActiveStartDate          *time.Time
-	ActiveEndDate            *time.Time
-	Archived                 bool
-	DisplayTemplate          string
-	ExternalID               string
-	FulfillmentType          string
-	InventoryType            string
-	MetaDescription          string
-	MetaTitle                string
-	OverrideGeneratedURL     bool
-	ProductDescPattern       string
-	ProductTitlePattern      string
-	RootDisplayOrder         float64
-	TaxCode                  string
-	URL                      string
-	URLKey                   string
-	DefaultParentCategoryID  *int64
-	Attributes               []CategoryAttribute
-	CreatedAt                time.Time
-	UpdatedAt                time.Time
-}
-
-// CategoryAttribute represents a custom attribute of a category
-type CategoryAttribute struct {
-	ID         int64
-	Name       string
-	Value      string
-	CategoryID int64
+	ID                      int64
+	Name                    string
+	Description             string
+	LongDescription         string
+	ActiveStartDate         *time.Time
+	ActiveEndDate           *time.Time
+	Archived                bool // From blc_category.archived (bpchar(1) 'Y'/'N')
+	DisplayTemplate         string
+	ExternalID              string
+	FulfillmentType         string
+	InventoryType           string
+	MetaDescription         string // From blc_category.meta_desc
+	MetaTitle               string // From blc_category.meta_title
+	OverrideGeneratedURL    bool
+	ProductDescPattern      string  // From blc_category.product_desc_pattern_override
+	ProductTitlePattern     string  // From blc_category.product_title_pattern_override
+	RootDisplayOrder        float64 // From blc_category.root_display_order
+	TaxCode                 string
+	URL                     string
+	URLKey                  string
+	DefaultParentCategoryID *int64 // From blc_category.default_parent_category_id
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }
 
 // NewCategory creates a new category
@@ -51,7 +40,6 @@ func NewCategory(name, description, url, urlKey string) *Category {
 		Archived:    false,
 		CreatedAt:   now,
 		UpdatedAt:   now,
-		Attributes:  make([]CategoryAttribute, 0),
 	}
 }
 
@@ -67,14 +55,14 @@ func (c *Category) Unarchive() {
 	c.UpdatedAt = time.Now()
 }
 
-// SetParentCategory sets the parent category
+// SetParentCategory sets the default parent category
 func (c *Category) SetParentCategory(parentID int64) {
 	c.DefaultParentCategoryID = &parentID
 	c.UpdatedAt = time.Now()
 }
 
-// RemoveParentCategory removes the parent category relationship
-func (c *Category) RemoveParentCategory() {
+// RemoveDefaultParentCategory removes the default parent category relationship
+func (c *Category) RemoveDefaultParentCategory() {
 	c.DefaultParentCategoryID = nil
 	c.UpdatedAt = time.Now()
 }
@@ -101,49 +89,6 @@ func (c *Category) IsActive() bool {
 	}
 
 	return true
-}
-
-// AddAttribute adds a custom attribute to the category
-func (c *Category) AddAttribute(name, value string) {
-	c.Attributes = append(c.Attributes, CategoryAttribute{
-		Name:       name,
-		Value:      value,
-		CategoryID: c.ID,
-	})
-	c.UpdatedAt = time.Now()
-}
-
-// UpdateAttribute updates an existing attribute or adds it if not found
-func (c *Category) UpdateAttribute(name, value string) {
-	for i, attr := range c.Attributes {
-		if attr.Name == name {
-			c.Attributes[i].Value = value
-			c.UpdatedAt = time.Now()
-			return
-		}
-	}
-	c.AddAttribute(name, value)
-}
-
-// GetAttribute retrieves an attribute value by name
-func (c *Category) GetAttribute(name string) (string, bool) {
-	for _, attr := range c.Attributes {
-		if attr.Name == name {
-			return attr.Value, true
-		}
-	}
-	return "", false
-}
-
-// RemoveAttribute removes an attribute by name
-func (c *Category) RemoveAttribute(name string) {
-	for i, attr := range c.Attributes {
-		if attr.Name == name {
-			c.Attributes = append(c.Attributes[:i], c.Attributes[i+1:]...)
-			c.UpdatedAt = time.Now()
-			return
-		}
-	}
 }
 
 // UpdateMetadata updates SEO metadata

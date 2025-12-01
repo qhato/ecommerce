@@ -29,8 +29,8 @@ type CustomerRegisteredEvent struct {
 func NewCustomerRegisteredEvent(customerID int64, email, username, firstName, lastName string) *CustomerRegisteredEvent {
 	return &CustomerRegisteredEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventCustomerRegistered,
-			Timestamp: time.Now(),
+			Type:       EventCustomerRegistered,
+			OccurredOn: time.Now(),
 		},
 		CustomerID:   customerID,
 		EmailAddress: email,
@@ -42,7 +42,7 @@ func NewCustomerRegisteredEvent(customerID int64, email, username, firstName, la
 
 // Type returns the event type
 func (e *CustomerRegisteredEvent) Type() string {
-	return e.EventType
+	return e.BaseEvent.Type
 }
 
 // CustomerUpdatedEvent is published when a customer is updated
@@ -56,8 +56,8 @@ type CustomerUpdatedEvent struct {
 func NewCustomerUpdatedEvent(customerID int64, changes map[string]interface{}) *CustomerUpdatedEvent {
 	return &CustomerUpdatedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventCustomerUpdated,
-			Timestamp: time.Now(),
+			Type:       EventCustomerUpdated,
+			OccurredOn: time.Now(),
 		},
 		CustomerID: customerID,
 		Changes:    changes,
@@ -66,7 +66,7 @@ func NewCustomerUpdatedEvent(customerID int64, changes map[string]interface{}) *
 
 // Type returns the event type
 func (e *CustomerUpdatedEvent) Type() string {
-	return e.EventType
+	return e.BaseEvent.Type
 }
 
 // CustomerDeactivatedEvent is published when a customer is deactivated
@@ -79,8 +79,8 @@ type CustomerDeactivatedEvent struct {
 func NewCustomerDeactivatedEvent(customerID int64) *CustomerDeactivatedEvent {
 	return &CustomerDeactivatedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventCustomerDeactivated,
-			Timestamp: time.Now(),
+			Type:       EventCustomerDeactivated,
+			OccurredOn: time.Now(),
 		},
 		CustomerID: customerID,
 	}
@@ -88,7 +88,7 @@ func NewCustomerDeactivatedEvent(customerID int64) *CustomerDeactivatedEvent {
 
 // Type returns the event type
 func (e *CustomerDeactivatedEvent) Type() string {
-	return e.EventType
+	return e.BaseEvent.Type
 }
 
 // CustomerActivatedEvent is published when a customer is activated
@@ -101,8 +101,8 @@ type CustomerActivatedEvent struct {
 func NewCustomerActivatedEvent(customerID int64) *CustomerActivatedEvent {
 	return &CustomerActivatedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventCustomerActivated,
-			Timestamp: time.Now(),
+			Type:       EventCustomerActivated,
+			OccurredOn: time.Now(),
 		},
 		CustomerID: customerID,
 	}
@@ -110,7 +110,7 @@ func NewCustomerActivatedEvent(customerID int64) *CustomerActivatedEvent {
 
 // Type returns the event type
 func (e *CustomerActivatedEvent) Type() string {
-	return e.EventType
+	return e.BaseEvent.Type
 }
 
 // CustomerPasswordChangedEvent is published when password is changed
@@ -123,8 +123,8 @@ type CustomerPasswordChangedEvent struct {
 func NewCustomerPasswordChangedEvent(customerID int64) *CustomerPasswordChangedEvent {
 	return &CustomerPasswordChangedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventCustomerPasswordChanged,
-			Timestamp: time.Now(),
+			Type:       EventCustomerPasswordChanged,
+			OccurredOn: time.Now(),
 		},
 		CustomerID: customerID,
 	}
@@ -132,5 +132,5 @@ func NewCustomerPasswordChangedEvent(customerID int64) *CustomerPasswordChangedE
 
 // Type returns the event type
 func (e *CustomerPasswordChangedEvent) Type() string {
-	return e.EventType
+	return e.BaseEvent.Type
 }

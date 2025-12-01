@@ -20,11 +20,11 @@ const (
 	EventCategoryDeleted  = "catalog.category.deleted"
 
 	// SKU events
-	EventSKUCreated            = "catalog.sku.created"
-	EventSKUUpdated            = "catalog.sku.updated"
-	EventSKUDeleted            = "catalog.sku.deleted"
+	EventSKUCreated             = "catalog.sku.created"
+	EventSKUUpdated             = "catalog.sku.updated"
+	EventSKUDeleted             = "catalog.sku.deleted"
 	EventSKUAvailabilityChanged = "catalog.sku.availability_changed"
-	EventSKUPriceChanged       = "catalog.sku.price_changed"
+	EventSKUPriceChanged        = "catalog.sku.price_changed"
 )
 
 // ProductCreatedEvent is published when a product is created
@@ -39,8 +39,8 @@ type ProductCreatedEvent struct {
 func NewProductCreatedEvent(productID int64, model, manufacture string) *ProductCreatedEvent {
 	return &ProductCreatedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventProductCreated,
-			Timestamp: time.Now(),
+			Type:       EventProductCreated,
+			OccurredOn: time.Now(),
 		},
 		ProductID:   productID,
 		Model:       model,
@@ -48,15 +48,10 @@ func NewProductCreatedEvent(productID int64, model, manufacture string) *Product
 	}
 }
 
-// Type returns the event type
-func (e *ProductCreatedEvent) Type() string {
-	return e.EventType
-}
-
 // ProductUpdatedEvent is published when a product is updated
 type ProductUpdatedEvent struct {
 	event.BaseEvent
-	ProductID int64  `json:"product_id"`
+	ProductID int64                  `json:"product_id"`
 	Changes   map[string]interface{} `json:"changes"`
 }
 
@@ -64,17 +59,12 @@ type ProductUpdatedEvent struct {
 func NewProductUpdatedEvent(productID int64, changes map[string]interface{}) *ProductUpdatedEvent {
 	return &ProductUpdatedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventProductUpdated,
-			Timestamp: time.Now(),
+			Type:       EventProductUpdated,
+			OccurredOn: time.Now(),
 		},
 		ProductID: productID,
 		Changes:   changes,
 	}
-}
-
-// Type returns the event type
-func (e *ProductUpdatedEvent) Type() string {
-	return e.EventType
 }
 
 // ProductArchivedEvent is published when a product is archived
@@ -87,16 +77,11 @@ type ProductArchivedEvent struct {
 func NewProductArchivedEvent(productID int64) *ProductArchivedEvent {
 	return &ProductArchivedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventProductArchived,
-			Timestamp: time.Now(),
+			Type:       EventProductArchived,
+			OccurredOn: time.Now(),
 		},
 		ProductID: productID,
 	}
-}
-
-// Type returns the event type
-func (e *ProductArchivedEvent) Type() string {
-	return e.EventType
 }
 
 // CategoryCreatedEvent is published when a category is created
@@ -111,18 +96,13 @@ type CategoryCreatedEvent struct {
 func NewCategoryCreatedEvent(categoryID int64, name string, parentID *int64) *CategoryCreatedEvent {
 	return &CategoryCreatedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventCategoryCreated,
-			Timestamp: time.Now(),
+			Type:       EventCategoryCreated,
+			OccurredOn: time.Now(),
 		},
 		CategoryID: categoryID,
 		Name:       name,
 		ParentID:   parentID,
 	}
-}
-
-// Type returns the event type
-func (e *CategoryCreatedEvent) Type() string {
-	return e.EventType
 }
 
 // CategoryUpdatedEvent is published when a category is updated
@@ -136,17 +116,12 @@ type CategoryUpdatedEvent struct {
 func NewCategoryUpdatedEvent(categoryID int64, changes map[string]interface{}) *CategoryUpdatedEvent {
 	return &CategoryUpdatedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventCategoryUpdated,
-			Timestamp: time.Now(),
+			Type:       EventCategoryUpdated,
+			OccurredOn: time.Now(),
 		},
 		CategoryID: categoryID,
 		Changes:    changes,
 	}
-}
-
-// Type returns the event type
-func (e *CategoryUpdatedEvent) Type() string {
-	return e.EventType
 }
 
 // SKUCreatedEvent is published when a SKU is created
@@ -162,19 +137,14 @@ type SKUCreatedEvent struct {
 func NewSKUCreatedEvent(skuID int64, productID *int64, name string, price float64) *SKUCreatedEvent {
 	return &SKUCreatedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventSKUCreated,
-			Timestamp: time.Now(),
+			Type:       EventSKUCreated,
+			OccurredOn: time.Now(),
 		},
 		SKUID:     skuID,
 		ProductID: productID,
 		Name:      name,
 		Price:     price,
 	}
-}
-
-// Type returns the event type
-func (e *SKUCreatedEvent) Type() string {
-	return e.EventType
 }
 
 // SKUAvailabilityChangedEvent is published when SKU availability changes
@@ -188,17 +158,12 @@ type SKUAvailabilityChangedEvent struct {
 func NewSKUAvailabilityChangedEvent(skuID int64, available bool) *SKUAvailabilityChangedEvent {
 	return &SKUAvailabilityChangedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventSKUAvailabilityChanged,
-			Timestamp: time.Now(),
+			Type:       EventSKUAvailabilityChanged,
+			OccurredOn: time.Now(),
 		},
 		SKUID:     skuID,
 		Available: available,
 	}
-}
-
-// Type returns the event type
-func (e *SKUAvailabilityChangedEvent) Type() string {
-	return e.EventType
 }
 
 // SKUPriceChangedEvent is published when SKU price changes
@@ -213,16 +178,11 @@ type SKUPriceChangedEvent struct {
 func NewSKUPriceChangedEvent(skuID int64, oldPrice, newPrice float64) *SKUPriceChangedEvent {
 	return &SKUPriceChangedEvent{
 		BaseEvent: event.BaseEvent{
-			EventType: EventSKUPriceChanged,
-			Timestamp: time.Now(),
+			Type:       EventSKUPriceChanged,
+			OccurredOn: time.Now(),
 		},
 		SKUID:    skuID,
 		OldPrice: oldPrice,
 		NewPrice: newPrice,
 	}
-}
-
-// Type returns the event type
-func (e *SKUPriceChangedEvent) Type() string {
-	return e.EventType
 }

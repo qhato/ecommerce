@@ -24,11 +24,11 @@ type Event interface {
 
 // BaseEvent provides a base implementation of Event
 type BaseEvent struct {
-	Type        string    `json:"type"`
-	ID          string    `json:"id"`
-	Aggregate   string    `json:"aggregate_id"`
-	OccurredOn  time.Time `json:"occurred_at"`
-	Payload     any       `json:"payload"`
+	Type       string    `json:"type"`
+	ID         string    `json:"id"`
+	Aggregate  string    `json:"aggregate_id"`
+	OccurredOn time.Time `json:"occurred_at"`
+	Payload    any       `json:"payload"`
 }
 
 // NewBaseEvent creates a new base event

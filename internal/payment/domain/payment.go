@@ -1,54 +1,52 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // PaymentStatus represents the status of a payment
 type PaymentStatus string
 
 const (
-	PaymentStatusPending   PaymentStatus = "PENDING"
+	PaymentStatusPending    PaymentStatus = "PENDING"
 	PaymentStatusProcessing PaymentStatus = "PROCESSING"
 	PaymentStatusAuthorized PaymentStatus = "AUTHORIZED"
-	PaymentStatusCaptured  PaymentStatus = "CAPTURED"
-	PaymentStatusCompleted PaymentStatus = "COMPLETED"
-	PaymentStatusFailed    PaymentStatus = "FAILED"
-	PaymentStatusCancelled PaymentStatus = "CANCELLED"
-	PaymentStatusRefunded  PaymentStatus = "REFUNDED"
+	PaymentStatusCaptured   PaymentStatus = "CAPTURED"
+	PaymentStatusCompleted  PaymentStatus = "COMPLETED"
+	PaymentStatusFailed     PaymentStatus = "FAILED"
+	PaymentStatusCancelled  PaymentStatus = "CANCELLED"
+	PaymentStatusRefunded   PaymentStatus = "REFUNDED"
 )
 
 // PaymentMethod represents the method of payment
 type PaymentMethod string
 
 const (
-	PaymentMethodCreditCard  PaymentMethod = "CREDIT_CARD"
-	PaymentMethodDebitCard   PaymentMethod = "DEBIT_CARD"
-	PaymentMethodPayPal      PaymentMethod = "PAYPAL"
+	PaymentMethodCreditCard   PaymentMethod = "CREDIT_CARD"
+	PaymentMethodDebitCard    PaymentMethod = "DEBIT_CARD"
+	PaymentMethodPayPal       PaymentMethod = "PAYPAL"
 	PaymentMethodBankTransfer PaymentMethod = "BANK_TRANSFER"
-	PaymentMethodCash        PaymentMethod = "CASH"
+	PaymentMethodCash         PaymentMethod = "CASH"
 )
 
 // Payment represents a payment entity
 type Payment struct {
-	ID                   int64
-	OrderID              int64
-	CustomerID           int64
-	PaymentMethod        PaymentMethod
-	Status               PaymentStatus
-	Amount               float64
-	CurrencyCode         string
-	TransactionID        string
-	GatewayResponse      string
-	AuthorizationCode    string
-	RefundAmount         float64
-	FailureReason        string
-	ProcessedDate        *time.Time
-	AuthorizedDate       *time.Time
-	CapturedDate         *time.Time
-	RefundedDate         *time.Time
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	ID                int64
+	OrderID           int64
+	CustomerID        int64
+	PaymentMethod     PaymentMethod
+	Status            PaymentStatus
+	Amount            float64
+	CurrencyCode      string
+	TransactionID     string
+	GatewayResponse   string
+	AuthorizationCode string
+	RefundAmount      float64
+	FailureReason     string
+	ProcessedDate     *time.Time
+	AuthorizedDate    *time.Time
+	CapturedDate      *time.Time
+	RefundedDate      *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // NewPayment creates a new payment

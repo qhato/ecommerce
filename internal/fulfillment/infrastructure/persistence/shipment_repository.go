@@ -5,17 +5,20 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/qhato/ecommerce/internal/fulfillment/domain"
-	"github.com/qhato/ecommerce/pkg/apperrors"
+	"github.com/qhato/ecommerce/pkg/database"
+	"github.com/qhato/ecommerce/pkg/errors"
 )
 
 // PostgresShipmentRepository implements the ShipmentRepository interface using PostgreSQL
 type PostgresShipmentRepository struct {
-	db *sql.DB
+	db *database.DB
 }
 
 // NewPostgresShipmentRepository creates a new PostgresShipmentRepository
-func NewPostgresShipmentRepository(db *sql.DB) *PostgresShipmentRepository {
+func NewPostgresShipmentRepository(db *database.DB) *PostgresShipmentRepository {
 	return &PostgresShipmentRepository{db: db}
 }
 
@@ -31,7 +34,7 @@ func (r *PostgresShipmentRepository) Create(ctx context.Context, shipment *domai
 		RETURNING fulfillment_group_id
 	`
 
-	err := r.db.QueryRowContext(ctx, query,
+	err := r.db.QueryRow(ctx, query,
 		shipment.OrderID,
 		shipment.Status,
 		shipment.TrackingNumber,
@@ -55,7 +58,7 @@ func (r *PostgresShipmentRepository) Create(ctx context.Context, shipment *domai
 	).Scan(&shipment.ID)
 
 	if err != nil {
-		return apperrors.NewInternalError("failed to create shipment", err)
+		return errors.InternalWrap(err, "failed to create shipment")
 	}
 
 	return nil
@@ -74,7 +77,8 @@ func (r *PostgresShipmentRepository) Update(ctx context.Context, shipment *domai
 		WHERE fulfillment_group_id = $20
 	`
 
-	result, err := r.db.ExecContext(ctx, query,
+	// Using Pool().Exec to get RowsAffected
+	tag, err := r.db.Pool().Exec(ctx, query,
 		shipment.OrderID,
 		shipment.Status,
 		shipment.TrackingNumber,
@@ -98,15 +102,11 @@ func (r *PostgresShipmentRepository) Update(ctx context.Context, shipment *domai
 	)
 
 	if err != nil {
-		return apperrors.NewInternalError("failed to update shipment", err)
+		return errors.InternalWrap(err, "failed to update shipment")
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return apperrors.NewInternalError("failed to get rows affected", err)
-	}
-	if rowsAffected == 0 {
-		return apperrors.NewNotFoundError("shipment", shipment.ID)
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound(fmt.Sprintf("shipment %d", shipment.ID))
 	}
 
 	return nil
@@ -134,7 +134,7 @@ func (r *PostgresShipmentRepository) FindByID(ctx context.Context, id int64) (*d
 		notes          sql.NullString
 	)
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRow(ctx, query, id).Scan(
 		&shipment.ID,
 		&shipment.OrderID,
 		&shipment.Status,
@@ -158,11 +158,11 @@ func (r *PostgresShipmentRepository) FindByID(ctx context.Context, id int64) (*d
 		&shipment.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find shipment by ID", err)
+		return nil, errors.InternalWrap(err, "failed to find shipment by ID")
 	}
 
 	// Handle nullable fields
@@ -203,9 +203,9 @@ func (r *PostgresShipmentRepository) FindByOrderID(ctx context.Context, orderID 
 		ORDER BY date_created DESC
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, orderID)
+	rows, err := r.db.Query(ctx, query, orderID)
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find shipments by order", err)
+		return nil, errors.InternalWrap(err, "failed to find shipments by order")
 	}
 	defer rows.Close()
 
@@ -234,7 +234,7 @@ func (r *PostgresShipmentRepository) FindByTrackingNumber(ctx context.Context, t
 		notes         sql.NullString
 	)
 
-	err := r.db.QueryRowContext(ctx, query, trackingNumber).Scan(
+	err := r.db.QueryRow(ctx, query, trackingNumber).Scan(
 		&shipment.ID,
 		&shipment.OrderID,
 		&shipment.Status,
@@ -258,11 +258,11 @@ func (r *PostgresShipmentRepository) FindByTrackingNumber(ctx context.Context, t
 		&shipment.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find shipment by tracking number", err)
+		return nil, errors.InternalWrap(err, "failed to find shipment by tracking number")
 	}
 
 	// Handle nullable fields
@@ -346,9 +346,9 @@ func (r *PostgresShipmentRepository) FindAll(ctx context.Context, filter *domain
 	}
 
 	var total int64
-	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+	err := r.db.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to count shipments", err)
+		return nil, 0, errors.InternalWrap(err, "failed to count shipments")
 	}
 
 	// Add sorting
@@ -368,9 +368,9 @@ func (r *PostgresShipmentRepository) FindAll(ctx context.Context, filter *domain
 		args = append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
 	}
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to find all shipments", err)
+		return nil, 0, errors.InternalWrap(err, "failed to find all shipments")
 	}
 	defer rows.Close()
 
@@ -379,7 +379,7 @@ func (r *PostgresShipmentRepository) FindAll(ctx context.Context, filter *domain
 }
 
 // scanShipments scans shipment rows
-func (r *PostgresShipmentRepository) scanShipments(rows *sql.Rows) ([]*domain.Shipment, error) {
+func (r *PostgresShipmentRepository) scanShipments(rows pgx.Rows) ([]*domain.Shipment, error) {
 	shipments := make([]*domain.Shipment, 0)
 
 	for rows.Next() {
@@ -418,7 +418,7 @@ func (r *PostgresShipmentRepository) scanShipments(rows *sql.Rows) ([]*domain.Sh
 			&shipment.UpdatedAt,
 		)
 		if err != nil {
-			return nil, apperrors.NewInternalError("failed to scan shipment", err)
+			return nil, errors.InternalWrap(err, "failed to scan shipment")
 		}
 
 		// Handle nullable fields
@@ -448,7 +448,7 @@ func (r *PostgresShipmentRepository) scanShipments(rows *sql.Rows) ([]*domain.Sh
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, apperrors.NewInternalError("failed to iterate shipments", err)
+		return nil, errors.InternalWrap(err, "failed to iterate shipments")
 	}
 
 	return shipments, nil

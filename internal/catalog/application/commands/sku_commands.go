@@ -12,45 +12,42 @@ import (
 
 // CreateSKUCommand represents a command to create a SKU
 type CreateSKUCommand struct {
-	Name                  string  `json:"name" validate:"required"`
-	Description           string  `json:"description,omitempty"`
-	LongDescription       string  `json:"long_description,omitempty"`
-	UPC                   string  `json:"upc,omitempty"`
-	CurrencyCode          string  `json:"currency_code" validate:"required"`
-	Price                 float64 `json:"price" validate:"required,min=0"`
-	RetailPrice           float64 `json:"retail_price" validate:"required,min=0"`
-	SalePrice             float64 `json:"sale_price,omitempty"`
-	Cost                  float64 `json:"cost,omitempty"`
-	Available             bool    `json:"available"`
-	Discountable          bool    `json:"discountable"`
-	Taxable               bool    `json:"taxable"`
-	TaxCode               string  `json:"tax_code,omitempty"`
-	DefaultProductID      *int64  `json:"default_product_id,omitempty"`
-	Attributes            map[string]string `json:"attributes,omitempty"`
+	Name             string            `json:"name" validate:"required"`
+	Description      string            `json:"description,omitempty"`
+	LongDescription  string            `json:"long_description,omitempty"`
+	UPC              string            `json:"upc,omitempty"`
+	CurrencyCode     string            `json:"currency_code" validate:"required"`
+	RetailPrice      float64           `json:"retail_price" validate:"required,min=0"`
+	SalePrice        float64           `json:"sale_price,omitempty"`
+	Cost             float64           `json:"cost,omitempty"`
+	Available        bool              `json:"available"`
+	Discountable     bool              `json:"discountable"`
+	Taxable          bool              `json:"taxable"`
+	TaxCode          string            `json:"tax_code,omitempty"`
+	DefaultProductID *int64            `json:"default_product_id,omitempty"`
+	Attributes       map[string]string `json:"attributes,omitempty"`
 }
 
 // UpdateSKUCommand represents a command to update a SKU
 type UpdateSKUCommand struct {
-	ID              int64              `json:"id" validate:"required"`
-	Name            string             `json:"name,omitempty"`
-	Description     string             `json:"description,omitempty"`
-	LongDescription string             `json:"long_description,omitempty"`
-	UPC             string             `json:"upc,omitempty"`
-	Price           *float64           `json:"price,omitempty"`
-	RetailPrice     *float64           `json:"retail_price,omitempty"`
-	SalePrice       *float64           `json:"sale_price,omitempty"`
-	Cost            *float64           `json:"cost,omitempty"`
-	Available       *bool              `json:"available,omitempty"`
-	Discountable    *bool              `json:"discountable,omitempty"`
-	Taxable         *bool              `json:"taxable,omitempty"`
-	TaxCode         string             `json:"tax_code,omitempty"`
-	Attributes      map[string]string  `json:"attributes,omitempty"`
+	ID              int64             `json:"id" validate:"required"`
+	Name            string            `json:"name,omitempty"`
+	Description     string            `json:"description,omitempty"`
+	LongDescription string            `json:"long_description,omitempty"`
+	UPC             string            `json:"upc,omitempty"`
+	RetailPrice     *float64          `json:"retail_price,omitempty"`
+	SalePrice       *float64          `json:"sale_price,omitempty"`
+	Cost            *float64          `json:"cost,omitempty"`
+	Available       *bool             `json:"available,omitempty"`
+	Discountable    *bool             `json:"discountable,omitempty"`
+	Taxable         *bool             `json:"taxable,omitempty"`
+	TaxCode         string            `json:"tax_code,omitempty"`
+	Attributes      map[string]string `json:"attributes,omitempty"`
 }
 
 // UpdateSKUPricingCommand represents a command to update SKU pricing
 type UpdateSKUPricingCommand struct {
 	ID          int64   `json:"id" validate:"required"`
-	Price       float64 `json:"price" validate:"required,min=0"`
 	RetailPrice float64 `json:"retail_price" validate:"required,min=0"`
 	SalePrice   float64 `json:"sale_price,omitempty"`
 }
@@ -69,6 +66,7 @@ type DeleteSKUCommand struct {
 // SKUCommandHandler handles SKU commands
 type SKUCommandHandler struct {
 	repo      domain.SKURepository
+	attrRepo  domain.SKUAttributeRepository
 	eventBus  event.Bus
 	validator *validator.Validator
 	logger    *logger.Logger
@@ -77,12 +75,14 @@ type SKUCommandHandler struct {
 // NewSKUCommandHandler creates a new SKU command handler
 func NewSKUCommandHandler(
 	repo domain.SKURepository,
+	attrRepo domain.SKUAttributeRepository,
 	eventBus event.Bus,
 	validator *validator.Validator,
 	logger *logger.Logger,
 ) *SKUCommandHandler {
 	return &SKUCommandHandler{
 		repo:      repo,
+		attrRepo:  attrRepo,
 		eventBus:  eventBus,
 		validator: validator,
 		logger:    logger,
@@ -93,7 +93,7 @@ func NewSKUCommandHandler(
 func (h *SKUCommandHandler) HandleCreateSKU(ctx context.Context, cmd *CreateSKUCommand) (int64, error) {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return 0, errors.NewValidationError("invalid create SKU command", err)
+		return 0, errors.ValidationError("invalid create SKU command").WithInternal(err)
 	}
 
 	// Create SKU entity
@@ -102,40 +102,45 @@ func (h *SKUCommandHandler) HandleCreateSKU(ctx context.Context, cmd *CreateSKUC
 		cmd.Description,
 		cmd.UPC,
 		cmd.CurrencyCode,
-		cmd.Price,
+		cmd.Cost,
 		cmd.RetailPrice,
+		cmd.SalePrice,
 	)
 
 	// Set optional fields
 	sku.LongDescription = cmd.LongDescription
-	sku.SalePrice = cmd.SalePrice
-	sku.Cost = cmd.Cost
 	sku.Available = cmd.Available
 	sku.Discountable = cmd.Discountable
 	sku.Taxable = cmd.Taxable
 	sku.TaxCode = cmd.TaxCode
 	sku.DefaultProductID = cmd.DefaultProductID
 
+	// Save to repository
+	if err := h.repo.Create(ctx, sku); err != nil {
+		h.logger.WithError(err).Error("failed to create SKU")
+		return 0, errors.InternalWrap(err, "failed to create SKU")
+	}
+
 	// Add attributes
 	if cmd.Attributes != nil {
 		for name, value := range cmd.Attributes {
-			sku.AddAttribute(name, value)
+			attr, err := domain.NewSKUAttribute(sku.ID, name, value)
+			if err != nil {
+				return 0, err
+			}
+			if err := h.attrRepo.Save(ctx, attr); err != nil {
+				return 0, errors.InternalWrap(err, "failed to save SKU attribute")
+			}
 		}
 	}
 
-	// Save to repository
-	if err := h.repo.Create(ctx, sku); err != nil {
-		h.logger.Error("failed to create SKU", "error", err)
-		return 0, errors.Wrap(err, "failed to create SKU")
-	}
-
 	// Publish domain event
-	event := domain.NewSKUCreatedEvent(sku.ID, sku.DefaultProductID, sku.Name, sku.Price)
+	event := domain.NewSKUCreatedEvent(sku.ID, sku.DefaultProductID, sku.Name, sku.RetailPrice)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish SKU created event", "error", err)
+		h.logger.WithError(err).Error("failed to publish SKU created event")
 	}
 
-	h.logger.Info("SKU created", "sku_id", sku.ID)
+	h.logger.WithField("sku_id", sku.ID).Info("SKU created")
 	return sku.ID, nil
 }
 
@@ -143,13 +148,13 @@ func (h *SKUCommandHandler) HandleCreateSKU(ctx context.Context, cmd *CreateSKUC
 func (h *SKUCommandHandler) HandleUpdateSKU(ctx context.Context, cmd *UpdateSKUCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid update SKU command", err)
+		return errors.ValidationError("invalid update SKU command").WithInternal(err)
 	}
 
 	// Find existing SKU
 	sku, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "SKU not found")
+		return errors.InternalWrap(err, "SKU not found")
 	}
 
 	// Update fields if provided
@@ -171,21 +176,38 @@ func (h *SKUCommandHandler) HandleUpdateSKU(ctx context.Context, cmd *UpdateSKUC
 	if cmd.Taxable != nil {
 		sku.SetTaxable(*cmd.Taxable, cmd.TaxCode)
 	}
+	if cmd.RetailPrice != nil || cmd.SalePrice != nil {
+		retailPrice := sku.RetailPrice
+		if cmd.RetailPrice != nil {
+			retailPrice = *cmd.RetailPrice
+		}
+		salePrice := sku.SalePrice
+		if cmd.SalePrice != nil {
+			salePrice = *cmd.SalePrice
+		}
+		sku.UpdatePricing(retailPrice, salePrice)
+	}
 
 	// Update attributes
 	if cmd.Attributes != nil {
 		for name, value := range cmd.Attributes {
-			sku.UpdateAttribute(name, value)
+			attr, err := domain.NewSKUAttribute(sku.ID, name, value)
+			if err != nil {
+				return err
+			}
+			if err := h.attrRepo.Save(ctx, attr); err != nil {
+				return errors.InternalWrap(err, "failed to save SKU attribute")
+			}
 		}
 	}
 
 	// Save to repository
 	if err := h.repo.Update(ctx, sku); err != nil {
-		h.logger.Error("failed to update SKU", "error", err, "sku_id", cmd.ID)
-		return errors.Wrap(err, "failed to update SKU")
+		h.logger.WithField("sku_id", cmd.ID).WithError(err).Error("failed to update SKU")
+		return errors.InternalWrap(err, "failed to update SKU")
 	}
 
-	h.logger.Info("SKU updated", "sku_id", sku.ID)
+	h.logger.WithField("sku_id", sku.ID).Info("SKU updated")
 	return nil
 }
 
@@ -193,36 +215,36 @@ func (h *SKUCommandHandler) HandleUpdateSKU(ctx context.Context, cmd *UpdateSKUC
 func (h *SKUCommandHandler) HandleUpdateSKUPricing(ctx context.Context, cmd *UpdateSKUPricingCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid update SKU pricing command", err)
+		return errors.ValidationError("invalid update SKU pricing command").WithInternal(err)
 	}
 
 	// Find existing SKU
 	sku, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "SKU not found")
+		return errors.InternalWrap(err, "SKU not found")
 	}
 
 	// Track old price for event
-	oldPrice := sku.Price
+	oldPrice := sku.RetailPrice
 
 	// Update pricing
-	sku.UpdatePricing(cmd.Price, cmd.RetailPrice, cmd.SalePrice)
+	sku.UpdatePricing(cmd.RetailPrice, cmd.SalePrice)
 
 	// Save to repository
 	if err := h.repo.Update(ctx, sku); err != nil {
-		h.logger.Error("failed to update SKU pricing", "error", err, "sku_id", cmd.ID)
-		return errors.Wrap(err, "failed to update SKU pricing")
+		h.logger.WithField("sku_id", cmd.ID).WithError(err).Error("failed to update SKU pricing")
+		return errors.InternalWrap(err, "failed to update SKU pricing")
 	}
 
 	// Publish price changed event if price actually changed
-	if oldPrice != cmd.Price {
-		event := domain.NewSKUPriceChangedEvent(sku.ID, oldPrice, cmd.Price)
+	if oldPrice != cmd.RetailPrice {
+		event := domain.NewSKUPriceChangedEvent(sku.ID, oldPrice, cmd.RetailPrice)
 		if err := h.eventBus.Publish(ctx, event); err != nil {
-			h.logger.Error("failed to publish SKU price changed event", "error", err)
+			h.logger.WithError(err).Error("failed to publish SKU price changed event")
 		}
 	}
 
-	h.logger.Info("SKU pricing updated", "sku_id", sku.ID)
+	h.logger.WithField("sku_id", sku.ID).Info("SKU pricing updated")
 	return nil
 }
 
@@ -230,22 +252,22 @@ func (h *SKUCommandHandler) HandleUpdateSKUPricing(ctx context.Context, cmd *Upd
 func (h *SKUCommandHandler) HandleUpdateSKUAvailability(ctx context.Context, cmd *UpdateSKUAvailabilityCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid update SKU availability command", err)
+		return errors.ValidationError("invalid update SKU availability command").WithInternal(err)
 	}
 
 	// Update availability directly
 	if err := h.repo.UpdateAvailability(ctx, cmd.ID, cmd.Available); err != nil {
-		h.logger.Error("failed to update SKU availability", "error", err, "sku_id", cmd.ID)
-		return errors.Wrap(err, "failed to update SKU availability")
+		h.logger.WithField("sku_id", cmd.ID).WithError(err).Error("failed to update SKU availability")
+		return errors.InternalWrap(err, "failed to update SKU availability")
 	}
 
 	// Publish availability changed event
 	event := domain.NewSKUAvailabilityChangedEvent(cmd.ID, cmd.Available)
 	if err := h.eventBus.Publish(ctx, event); err != nil {
-		h.logger.Error("failed to publish SKU availability changed event", "error", err)
+		h.logger.WithError(err).Error("failed to publish SKU availability changed event")
 	}
 
-	h.logger.Info("SKU availability updated", "sku_id", cmd.ID, "available", cmd.Available)
+	h.logger.WithField("sku_id", cmd.ID).WithField("available", cmd.Available).Info("SKU availability updated")
 	return nil
 }
 
@@ -253,21 +275,21 @@ func (h *SKUCommandHandler) HandleUpdateSKUAvailability(ctx context.Context, cmd
 func (h *SKUCommandHandler) HandleDeleteSKU(ctx context.Context, cmd *DeleteSKUCommand) error {
 	// Validate command
 	if err := h.validator.Validate(cmd); err != nil {
-		return errors.NewValidationError("invalid delete SKU command", err)
+		return errors.ValidationError("invalid delete SKU command").WithInternal(err)
 	}
 
 	// Check if SKU exists
 	_, err := h.repo.FindByID(ctx, cmd.ID)
 	if err != nil {
-		return errors.Wrap(err, "SKU not found")
+		return errors.InternalWrap(err, "SKU not found")
 	}
 
 	// Delete SKU
 	if err := h.repo.Delete(ctx, cmd.ID); err != nil {
-		h.logger.Error("failed to delete SKU", "error", err, "sku_id", cmd.ID)
-		return errors.Wrap(err, "failed to delete SKU")
+		h.logger.WithField("sku_id", cmd.ID).WithError(err).Error("failed to delete SKU")
+		return errors.InternalWrap(err, "failed to delete SKU")
 	}
 
-	h.logger.Info("SKU deleted", "sku_id", cmd.ID)
+	h.logger.WithField("sku_id", cmd.ID).Info("SKU deleted")
 	return nil
 }

@@ -1,74 +1,64 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 // SKU represents a Stock Keeping Unit
 type SKU struct {
-	ID                    int64
-	Name                  string
-	Description           string
-	LongDescription       string
-	ActiveStartDate       *time.Time
-	ActiveEndDate         *time.Time
-	Available             bool
-	Cost                  float64
-	ContainerShape        string
-	Depth                 float64
+	ID                     int64
+	Name                   string
+	Description            string
+	LongDescription        string
+	ActiveStartDate        *time.Time
+	ActiveEndDate          *time.Time
+	Available              bool // From blc_sku.available_flag (bpchar(1) 'Y'/'N')
+	Cost                   float64
+	ContainerShape         string
+	Depth                  float64
 	DimensionUnitOfMeasure string
-	Girth                 float64
-	Height                float64
-	ContainerSize         string
-	Width                 float64
-	Discountable          bool
-	DisplayTemplate       string
-	ExternalID            string
-	FulfillmentType       string
-	InventoryType         string
-	IsMachineSortable     bool
-	OverrideGeneratedURL  bool
-	Price                 float64
-	RetailPrice           float64
-	SalePrice             float64
-	Taxable               bool
-	TaxCode               string
-	UPC                   string
-	URLKey                string
-	Weight                float64
-	WeightUnitOfMeasure   string
-	CurrencyCode          string
-	DefaultProductID      *int64
-	AdditionalProductID   *int64
-	Attributes            []SKUAttribute
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
-}
-
-// SKUAttribute represents a custom attribute of a SKU
-type SKUAttribute struct {
-	ID    int64
-	Name  string
-	Value string
-	SKUID int64
+	Girth                  float64
+	Height                 float64
+	ContainerSize          string
+	Width                  float64
+	Discountable           bool // From blc_sku.discountable_flag (bpchar(1) 'Y'/'N')
+	DisplayTemplate        string
+	ExternalID             string
+	FulfillmentType        string
+	InventoryType          string
+	IsMachineSortable      bool
+	RetailPrice            float64
+	SalePrice              float64
+	Taxable                bool // From blc_sku.taxable_flag (bpchar(1) 'Y'/'N')
+	TaxCode                string
+	UPC                    string
+	URLKey                 string
+	Weight                 float64
+	WeightUnitOfMeasure    string
+	CurrencyCode           string
+	DefaultProductID       *int64
+	AdditionalProductID    *int64 // From blc_sku.addl_product_id
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 // NewSKU creates a new SKU
-func NewSKU(name, description, upc, currencyCode string, price, retailPrice float64) *SKU {
+func NewSKU(
+	name, description, upc, currencyCode string,
+	cost, retailPrice, salePrice float64,
+) *SKU {
 	now := time.Now()
 	return &SKU{
-		Name:          name,
-		Description:   description,
-		UPC:           upc,
-		CurrencyCode:  currencyCode,
-		Price:         price,
-		RetailPrice:   retailPrice,
-		Available:     true,
-		Discountable:  true,
-		Taxable:       true,
-		CreatedAt:     now,
-		UpdatedAt:     now,
-		Attributes:    make([]SKUAttribute, 0),
+		Name:         name,
+		Description:  description,
+		UPC:          upc,
+		CurrencyCode: currencyCode,
+		Cost:         cost,
+		RetailPrice:  retailPrice,
+		SalePrice:    salePrice,
+		Available:    true,
+		Discountable: true,
+		Taxable:      true,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 }
 
@@ -103,73 +93,29 @@ func (s *SKU) IsActive() bool {
 }
 
 // UpdatePricing updates pricing information
-func (s *SKU) UpdatePricing(price, retailPrice, salePrice float64) {
-	s.Price = price
+func (s *SKU) UpdatePricing(retailPrice, salePrice float64) {
 	s.RetailPrice = retailPrice
 	s.SalePrice = salePrice
 	s.UpdatedAt = time.Now()
 }
 
-// GetEffectivePrice returns the effective selling price (sale price if set, otherwise regular price)
-func (s *SKU) GetEffectivePrice() float64 {
-	if s.SalePrice > 0 {
-		return s.SalePrice
-	}
-	return s.Price
-}
-
 // SetDimensions sets the physical dimensions
-func (s *SKU) SetDimensions(height, width, depth, weight float64, dimUnit, weightUnit string) {
+func (s *SKU) SetDimensions(height, width, depth, girth float64, containerShape, dimensionUnit, containerSize string) {
 	s.Height = height
 	s.Width = width
 	s.Depth = depth
+	s.Girth = girth
+	s.ContainerShape = containerShape
+	s.DimensionUnitOfMeasure = dimensionUnit
+	s.ContainerSize = containerSize
+	s.UpdatedAt = time.Now()
+}
+
+// SetWeight sets the weight information
+func (s *SKU) SetWeight(weight float64, unit string) {
 	s.Weight = weight
-	s.DimensionUnitOfMeasure = dimUnit
-	s.WeightUnitOfMeasure = weightUnit
+	s.WeightUnitOfMeasure = unit
 	s.UpdatedAt = time.Now()
-}
-
-// AddAttribute adds a custom attribute to the SKU
-func (s *SKU) AddAttribute(name, value string) {
-	s.Attributes = append(s.Attributes, SKUAttribute{
-		Name:  name,
-		Value: value,
-		SKUID: s.ID,
-	})
-	s.UpdatedAt = time.Now()
-}
-
-// UpdateAttribute updates an existing attribute or adds it if not found
-func (s *SKU) UpdateAttribute(name, value string) {
-	for i, attr := range s.Attributes {
-		if attr.Name == name {
-			s.Attributes[i].Value = value
-			s.UpdatedAt = time.Now()
-			return
-		}
-	}
-	s.AddAttribute(name, value)
-}
-
-// GetAttribute retrieves an attribute value by name
-func (s *SKU) GetAttribute(name string) (string, bool) {
-	for _, attr := range s.Attributes {
-		if attr.Name == name {
-			return attr.Value, true
-		}
-	}
-	return "", false
-}
-
-// RemoveAttribute removes an attribute by name
-func (s *SKU) RemoveAttribute(name string) {
-	for i, attr := range s.Attributes {
-		if attr.Name == name {
-			s.Attributes = append(s.Attributes[:i], s.Attributes[i+1:]...)
-			s.UpdatedAt = time.Now()
-			return
-		}
-	}
 }
 
 // UpdateDescription updates description and long description

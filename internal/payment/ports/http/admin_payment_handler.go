@@ -10,6 +10,7 @@ import (
 	"github.com/qhato/ecommerce/internal/payment/application/commands"
 	"github.com/qhato/ecommerce/internal/payment/application/queries"
 	"github.com/qhato/ecommerce/internal/payment/domain"
+	"github.com/qhato/ecommerce/pkg/errors"
 	httpPkg "github.com/qhato/ecommerce/pkg/http"
 	"github.com/qhato/ecommerce/pkg/logger"
 	"github.com/qhato/ecommerce/pkg/validator"
@@ -26,7 +27,7 @@ type AdminPaymentHandler struct {
 // NewAdminPaymentHandler creates a new AdminPaymentHandler
 func NewAdminPaymentHandler(
 	commandHandler *commands.PaymentCommandHandler,
-	queryHandler   *queries.PaymentQueryHandler,
+	queryHandler *queries.PaymentQueryHandler,
 	validator *validator.Validator,
 	log *logger.Logger,
 ) *AdminPaymentHandler {
@@ -59,12 +60,12 @@ func (h *AdminPaymentHandler) RegisterRoutes(r chi.Router) {
 func (h *AdminPaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	var req application.CreatePaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.BadRequest("validation failed").WithInternal(err))
 		return
 	}
 
@@ -77,7 +78,7 @@ func (h *AdminPaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Reque
 		req.CurrencyCode,
 	)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to create payment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to create payment"))
 		return
 	}
 
@@ -89,13 +90,13 @@ func (h *AdminPaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request)
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid payment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid payment ID").WithInternal(err))
 		return
 	}
 
 	payment, err := h.queryHandler.GetByID(r.Context(), id)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "payment not found", err)
+		httpPkg.RespondError(w, errors.NotFound("payment not found").WithInternal(err))
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *AdminPaymentHandler) GetPaymentByTransaction(w http.ResponseWriter, r *
 
 	payment, err := h.queryHandler.GetByTransactionID(r.Context(), transactionID)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "payment not found", err)
+		httpPkg.RespondError(w, errors.NotFound("payment not found").WithInternal(err))
 		return
 	}
 
@@ -120,13 +121,13 @@ func (h *AdminPaymentHandler) GetPaymentsByOrder(w http.ResponseWriter, r *http.
 	orderIDStr := chi.URLParam(r, "orderId")
 	orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID").WithInternal(err))
 		return
 	}
 
 	payments, err := h.queryHandler.ListByOrder(r.Context(), orderID)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to list payments", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to list payments"))
 		return
 	}
 
@@ -171,7 +172,7 @@ func (h *AdminPaymentHandler) ListPayments(w http.ResponseWriter, r *http.Reques
 
 	payments, total, err := h.queryHandler.List(r.Context(), filter)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to list payments", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to list payments"))
 		return
 	}
 
@@ -196,24 +197,24 @@ func (h *AdminPaymentHandler) AuthorizePayment(w http.ResponseWriter, r *http.Re
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid payment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid payment ID").WithInternal(err))
 		return
 	}
 
 	var req application.AuthorizePaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.BadRequest("validation failed").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.AuthorizePayment(r.Context(), id, req.AuthorizationCode, req.TransactionID)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to authorize payment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to authorize payment"))
 		return
 	}
 
@@ -230,19 +231,19 @@ func (h *AdminPaymentHandler) CapturePayment(w http.ResponseWriter, r *http.Requ
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid payment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid payment ID").WithInternal(err))
 		return
 	}
 
 	var req application.CapturePaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.CapturePayment(r.Context(), id, req.TransactionID)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to capture payment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to capture payment"))
 		return
 	}
 
@@ -259,24 +260,24 @@ func (h *AdminPaymentHandler) CompletePayment(w http.ResponseWriter, r *http.Req
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid payment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid payment ID").WithInternal(err))
 		return
 	}
 
 	var req application.ProcessPaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.BadRequest("validation failed").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.CompletePayment(r.Context(), id, req.TransactionID)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to complete payment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to complete payment"))
 		return
 	}
 
@@ -293,7 +294,7 @@ func (h *AdminPaymentHandler) FailPayment(w http.ResponseWriter, r *http.Request
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid payment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid payment ID").WithInternal(err))
 		return
 	}
 
@@ -301,18 +302,18 @@ func (h *AdminPaymentHandler) FailPayment(w http.ResponseWriter, r *http.Request
 		Reason string `json:"reason" validate:"required"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.BadRequest("validation failed").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.FailPayment(r.Context(), id, req.Reason)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to mark payment as failed", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to mark payment as failed"))
 		return
 	}
 
@@ -329,24 +330,24 @@ func (h *AdminPaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Reque
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid payment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid payment ID").WithInternal(err))
 		return
 	}
 
 	var req application.RefundPaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid request body", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid request body").WithInternal(err))
 		return
 	}
 
 	if err := h.validator.Validate(req); err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "validation failed", err)
+		httpPkg.RespondError(w, errors.BadRequest("validation failed").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.RefundPayment(r.Context(), id, req.Amount)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to refund payment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to refund payment"))
 		return
 	}
 
@@ -363,13 +364,13 @@ func (h *AdminPaymentHandler) CancelPayment(w http.ResponseWriter, r *http.Reque
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid payment ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid payment ID").WithInternal(err))
 		return
 	}
 
 	err = h.commandHandler.CancelPayment(r.Context(), id)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to cancel payment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to cancel payment"))
 		return
 	}
 

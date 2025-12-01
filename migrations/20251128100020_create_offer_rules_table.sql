@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS blc_offer_rule (
+    offer_rule_id BIGSERIAL PRIMARY KEY,
+    match_rule TEXT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);

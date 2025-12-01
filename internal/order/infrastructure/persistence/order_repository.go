@@ -5,27 +5,30 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/qhato/ecommerce/internal/order/domain"
-	"github.com/qhato/ecommerce/pkg/apperrors"
+	"github.com/qhato/ecommerce/pkg/database"
+	"github.com/qhato/ecommerce/pkg/errors"
 )
 
 // PostgresOrderRepository implements the OrderRepository interface using PostgreSQL
 type PostgresOrderRepository struct {
-	db *sql.DB
+	db *database.DB
 }
 
 // NewPostgresOrderRepository creates a new PostgresOrderRepository
-func NewPostgresOrderRepository(db *sql.DB) *PostgresOrderRepository {
+func NewPostgresOrderRepository(db *database.DB) *PostgresOrderRepository {
 	return &PostgresOrderRepository{db: db}
 }
 
 // Create creates a new order
 func (r *PostgresOrderRepository) Create(ctx context.Context, order *domain.Order) error {
-	tx, err := r.db.BeginTx(ctx, nil)
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return apperrors.NewInternalError("failed to begin transaction", err)
+		return errors.InternalWrap(err, "failed to begin transaction")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Insert order
 	query := `
@@ -37,16 +40,16 @@ func (r *PostgresOrderRepository) Create(ctx context.Context, order *domain.Orde
 		RETURNING order_id
 	`
 
-	err = tx.QueryRowContext(ctx, query,
+	err = tx.QueryRow(ctx, query,
 		order.OrderNumber,
 		order.CustomerID,
 		order.EmailAddress,
 		order.Name,
 		order.Status,
-		order.SubTotal,
+		order.OrderSubtotal,
 		order.TotalTax,
 		order.TotalShipping,
-		order.Total,
+		order.OrderTotal,
 		order.CurrencyCode,
 		order.SubmitDate,
 		order.CreatedAt,
@@ -54,7 +57,7 @@ func (r *PostgresOrderRepository) Create(ctx context.Context, order *domain.Orde
 	).Scan(&order.ID)
 
 	if err != nil {
-		return apperrors.NewInternalError("failed to insert order", err)
+		return errors.InternalWrap(err, "failed to insert order")
 	}
 
 	// Insert order items
@@ -71,10 +74,10 @@ func (r *PostgresOrderRepository) Create(ctx context.Context, order *domain.Orde
 			item := &order.Items[i]
 			item.OrderID = order.ID
 
-			err = tx.QueryRowContext(ctx, itemQuery,
+			err = tx.QueryRow(ctx, itemQuery,
 				item.OrderID,
 				item.SKUID,
-				item.ProductName,
+				item.Name,
 				item.Quantity,
 				item.Price,
 				item.TotalPrice,
@@ -83,13 +86,13 @@ func (r *PostgresOrderRepository) Create(ctx context.Context, order *domain.Orde
 			).Scan(&item.ID)
 
 			if err != nil {
-				return apperrors.NewInternalError("failed to insert order item", err)
+				return errors.InternalWrap(err, "failed to insert order item")
 			}
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return apperrors.NewInternalError("failed to commit transaction", err)
+	if err := tx.Commit(ctx); err != nil {
+		return errors.InternalWrap(err, "failed to commit transaction")
 	}
 
 	return nil
@@ -97,11 +100,11 @@ func (r *PostgresOrderRepository) Create(ctx context.Context, order *domain.Orde
 
 // Update updates an existing order
 func (r *PostgresOrderRepository) Update(ctx context.Context, order *domain.Order) error {
-	tx, err := r.db.BeginTx(ctx, nil)
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return apperrors.NewInternalError("failed to begin transaction", err)
+		return errors.InternalWrap(err, "failed to begin transaction")
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Update order
 	query := `
@@ -112,16 +115,16 @@ func (r *PostgresOrderRepository) Update(ctx context.Context, order *domain.Orde
 		WHERE order_id = $13
 	`
 
-	result, err := tx.ExecContext(ctx, query,
+	tag, err := tx.Exec(ctx, query,
 		order.OrderNumber,
 		order.CustomerID,
 		order.EmailAddress,
 		order.Name,
 		order.Status,
-		order.SubTotal,
+		order.OrderSubtotal,
 		order.TotalTax,
 		order.TotalShipping,
-		order.Total,
+		order.OrderTotal,
 		order.CurrencyCode,
 		order.SubmitDate,
 		order.UpdatedAt,
@@ -129,22 +132,18 @@ func (r *PostgresOrderRepository) Update(ctx context.Context, order *domain.Orde
 	)
 
 	if err != nil {
-		return apperrors.NewInternalError("failed to update order", err)
+		return errors.InternalWrap(err, "failed to update order")
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return apperrors.NewInternalError("failed to get rows affected", err)
-	}
-	if rowsAffected == 0 {
-		return apperrors.NewNotFoundError("order", order.ID)
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound(fmt.Sprintf("order %d", order.ID))
 	}
 
 	// Delete existing items and re-insert
 	// This is a simple approach; a more sophisticated one would update/insert/delete as needed
-	_, err = tx.ExecContext(ctx, "DELETE FROM blc_order_item WHERE order_id = $1", order.ID)
+	_, err = tx.Exec(ctx, "DELETE FROM blc_order_item WHERE order_id = $1", order.ID)
 	if err != nil {
-		return apperrors.NewInternalError("failed to delete order items", err)
+		return errors.InternalWrap(err, "failed to delete order items")
 	}
 
 	// Insert order items
@@ -161,10 +160,10 @@ func (r *PostgresOrderRepository) Update(ctx context.Context, order *domain.Orde
 			item := &order.Items[i]
 			item.OrderID = order.ID
 
-			err = tx.QueryRowContext(ctx, itemQuery,
+			err = tx.QueryRow(ctx, itemQuery,
 				item.OrderID,
 				item.SKUID,
-				item.ProductName,
+				item.Name,
 				item.Quantity,
 				item.Price,
 				item.TotalPrice,
@@ -173,13 +172,13 @@ func (r *PostgresOrderRepository) Update(ctx context.Context, order *domain.Orde
 			).Scan(&item.ID)
 
 			if err != nil {
-				return apperrors.NewInternalError("failed to insert order item", err)
+				return errors.InternalWrap(err, "failed to insert order item")
 			}
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return apperrors.NewInternalError("failed to commit transaction", err)
+	if err := tx.Commit(ctx); err != nil {
+		return errors.InternalWrap(err, "failed to commit transaction")
 	}
 
 	return nil
@@ -198,28 +197,28 @@ func (r *PostgresOrderRepository) FindByID(ctx context.Context, id int64) (*doma
 	order := &domain.Order{}
 	var submitDate sql.NullTime
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRow(ctx, query, id).Scan(
 		&order.ID,
 		&order.OrderNumber,
 		&order.CustomerID,
 		&order.EmailAddress,
 		&order.Name,
 		&order.Status,
-		&order.SubTotal,
+		&order.OrderSubtotal,
 		&order.TotalTax,
 		&order.TotalShipping,
-		&order.Total,
+		&order.OrderTotal,
 		&order.CurrencyCode,
 		&submitDate,
 		&order.CreatedAt,
 		&order.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find order by ID", err)
+		return nil, errors.InternalWrap(err, "failed to find order by ID")
 	}
 
 	if submitDate.Valid {
@@ -249,28 +248,28 @@ func (r *PostgresOrderRepository) FindByOrderNumber(ctx context.Context, orderNu
 	order := &domain.Order{}
 	var submitDate sql.NullTime
 
-	err := r.db.QueryRowContext(ctx, query, orderNumber).Scan(
+	err := r.db.QueryRow(ctx, query, orderNumber).Scan(
 		&order.ID,
 		&order.OrderNumber,
 		&order.CustomerID,
 		&order.EmailAddress,
 		&order.Name,
 		&order.Status,
-		&order.SubTotal,
+		&order.OrderSubtotal,
 		&order.TotalTax,
 		&order.TotalShipping,
-		&order.Total,
+		&order.OrderTotal,
 		&order.CurrencyCode,
 		&submitDate,
 		&order.CreatedAt,
 		&order.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find order by order number", err)
+		return nil, errors.InternalWrap(err, "failed to find order by order number")
 	}
 
 	if submitDate.Valid {
@@ -302,24 +301,24 @@ func (r *PostgresOrderRepository) FindByCustomerID(ctx context.Context, customer
 	argIndex := 2
 
 	// Add status filter if provided
-	if filter != nil && filter.Status != "" {
+	if filter != nil && filter.Status != nil && *filter.Status != "" {
 		query += fmt.Sprintf(" AND order_status = $%d", argIndex)
-		args = append(args, filter.Status)
+		args = append(args, *filter.Status)
 		argIndex++
 	}
 
 	// Count total
 	countQuery := "SELECT COUNT(*) FROM blc_order WHERE customer_id = $1"
 	countArgs := []interface{}{customerID}
-	if filter != nil && filter.Status != "" {
+	if filter != nil && filter.Status != nil && *filter.Status != "" {
 		countQuery += " AND order_status = $2"
-		countArgs = append(countArgs, filter.Status)
+		countArgs = append(countArgs, *filter.Status)
 	}
 
 	var total int64
-	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+	err := r.db.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to count orders", err)
+		return nil, 0, errors.InternalWrap(err, "failed to count orders")
 	}
 
 	// Add sorting
@@ -340,9 +339,9 @@ func (r *PostgresOrderRepository) FindByCustomerID(ctx context.Context, customer
 	}
 
 	// Execute query
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to find orders by customer", err)
+		return nil, 0, errors.InternalWrap(err, "failed to find orders by customer")
 	}
 	defer rows.Close()
 
@@ -358,17 +357,17 @@ func (r *PostgresOrderRepository) FindByCustomerID(ctx context.Context, customer
 			&order.EmailAddress,
 			&order.Name,
 			&order.Status,
-			&order.SubTotal,
+			&order.OrderSubtotal,
 			&order.TotalTax,
 			&order.TotalShipping,
-			&order.Total,
+			&order.OrderTotal,
 			&order.CurrencyCode,
 			&submitDate,
 			&order.CreatedAt,
 			&order.UpdatedAt,
 		)
 		if err != nil {
-			return nil, 0, apperrors.NewInternalError("failed to scan order", err)
+			return nil, 0, errors.InternalWrap(err, "failed to scan order")
 		}
 
 		if submitDate.Valid {
@@ -386,7 +385,7 @@ func (r *PostgresOrderRepository) FindByCustomerID(ctx context.Context, customer
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to iterate orders", err)
+		return nil, 0, errors.InternalWrap(err, "failed to iterate orders")
 	}
 
 	return orders, total, nil
@@ -408,14 +407,14 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter *domain.Or
 
 	// Add filters
 	if filter != nil {
-		if filter.Status != "" {
+		if filter.Status != nil && *filter.Status != "" {
 			query += fmt.Sprintf(" AND order_status = $%d", argIndex)
-			args = append(args, filter.Status)
+			args = append(args, *filter.Status)
 			argIndex++
 		}
-		if filter.CustomerID > 0 {
+		if filter.CustomerID != nil && *filter.CustomerID > 0 {
 			query += fmt.Sprintf(" AND customer_id = $%d", argIndex)
-			args = append(args, filter.CustomerID)
+			args = append(args, *filter.CustomerID)
 			argIndex++
 		}
 	}
@@ -425,21 +424,21 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter *domain.Or
 	countArgs := make([]interface{}, 0)
 	countArgIndex := 1
 	if filter != nil {
-		if filter.Status != "" {
+		if filter.Status != nil && *filter.Status != "" {
 			countQuery += fmt.Sprintf(" AND order_status = $%d", countArgIndex)
-			countArgs = append(countArgs, filter.Status)
+			countArgs = append(countArgs, *filter.Status)
 			countArgIndex++
 		}
-		if filter.CustomerID > 0 {
+		if filter.CustomerID != nil && *filter.CustomerID > 0 {
 			countQuery += fmt.Sprintf(" AND customer_id = $%d", countArgIndex)
-			countArgs = append(countArgs, filter.CustomerID)
+			countArgs = append(countArgs, *filter.CustomerID)
 		}
 	}
 
 	var total int64
-	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
+	err := r.db.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to count orders", err)
+		return nil, 0, errors.InternalWrap(err, "failed to count orders")
 	}
 
 	// Add sorting
@@ -460,9 +459,9 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter *domain.Or
 	}
 
 	// Execute query
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to find all orders", err)
+		return nil, 0, errors.InternalWrap(err, "failed to find all orders")
 	}
 	defer rows.Close()
 
@@ -478,17 +477,17 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter *domain.Or
 			&order.EmailAddress,
 			&order.Name,
 			&order.Status,
-			&order.SubTotal,
+			&order.OrderSubtotal,
 			&order.TotalTax,
 			&order.TotalShipping,
-			&order.Total,
+			&order.OrderTotal,
 			&order.CurrencyCode,
 			&submitDate,
 			&order.CreatedAt,
 			&order.UpdatedAt,
 		)
 		if err != nil {
-			return nil, 0, apperrors.NewInternalError("failed to scan order", err)
+			return nil, 0, errors.InternalWrap(err, "failed to scan order")
 		}
 
 		if submitDate.Valid {
@@ -506,7 +505,7 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter *domain.Or
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, 0, apperrors.NewInternalError("failed to iterate orders", err)
+		return nil, 0, errors.InternalWrap(err, "failed to iterate orders")
 	}
 
 	return orders, total, nil
@@ -522,9 +521,9 @@ func (r *PostgresOrderRepository) findOrderItems(ctx context.Context, orderID in
 		ORDER BY order_item_id
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, orderID)
+	rows, err := r.db.Query(ctx, query, orderID)
 	if err != nil {
-		return nil, apperrors.NewInternalError("failed to find order items", err)
+		return nil, errors.InternalWrap(err, "failed to find order items")
 	}
 	defer rows.Close()
 
@@ -535,7 +534,7 @@ func (r *PostgresOrderRepository) findOrderItems(ctx context.Context, orderID in
 			&item.ID,
 			&item.OrderID,
 			&item.SKUID,
-			&item.ProductName,
+			&item.Name,
 			&item.Quantity,
 			&item.Price,
 			&item.TotalPrice,
@@ -543,13 +542,13 @@ func (r *PostgresOrderRepository) findOrderItems(ctx context.Context, orderID in
 			&item.ShippingAmount,
 		)
 		if err != nil {
-			return nil, apperrors.NewInternalError("failed to scan order item", err)
+			return nil, errors.InternalWrap(err, "failed to scan order item")
 		}
 		items = append(items, item)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, apperrors.NewInternalError("failed to iterate order items", err)
+		return nil, errors.InternalWrap(err, "failed to iterate order items")
 	}
 
 	return items, nil

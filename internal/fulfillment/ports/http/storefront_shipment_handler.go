@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/qhato/ecommerce/internal/fulfillment/application"
 	"github.com/qhato/ecommerce/internal/fulfillment/domain"
+	"github.com/qhato/ecommerce/pkg/errors"
 	httpPkg "github.com/qhato/ecommerce/pkg/http"
 	"github.com/qhato/ecommerce/pkg/logger"
 )
@@ -40,17 +41,17 @@ func (h *StorefrontShipmentHandler) RegisterRoutes(r chi.Router) {
 func (h *StorefrontShipmentHandler) TrackShipment(w http.ResponseWriter, r *http.Request) {
 	trackingNumber := chi.URLParam(r, "trackingNumber")
 	if trackingNumber == "" {
-		httpPkg.RespondError(w, http.StatusBadRequest, "tracking number is required", nil)
+		httpPkg.RespondError(w, errors.BadRequest("tracking number is required"))
 		return
 	}
 
 	shipment, err := h.repo.FindByTrackingNumber(r.Context(), trackingNumber)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to track shipment", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to track shipment"))
 		return
 	}
 	if shipment == nil {
-		httpPkg.RespondError(w, http.StatusNotFound, "shipment not found", nil)
+		httpPkg.RespondError(w, errors.NotFound("shipment not found"))
 		return
 	}
 
@@ -62,7 +63,7 @@ func (h *StorefrontShipmentHandler) GetShipmentsByOrder(w http.ResponseWriter, r
 	orderIDStr := chi.URLParam(r, "orderId")
 	orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusBadRequest, "invalid order ID", err)
+		httpPkg.RespondError(w, errors.BadRequest("invalid order ID"))
 		return
 	}
 
@@ -70,7 +71,7 @@ func (h *StorefrontShipmentHandler) GetShipmentsByOrder(w http.ResponseWriter, r
 
 	shipments, err := h.repo.FindByOrderID(r.Context(), orderID)
 	if err != nil {
-		httpPkg.RespondError(w, http.StatusInternalServerError, "failed to list shipments", err)
+		httpPkg.RespondError(w, errors.InternalWrap(err, "failed to list shipments"))
 		return
 	}
 

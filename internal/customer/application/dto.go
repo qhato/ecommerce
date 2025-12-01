@@ -8,113 +8,57 @@ import (
 
 // CustomerDTO represents a customer data transfer object
 type CustomerDTO struct {
-	ID                     int64              `json:"id"`
-	EmailAddress           string             `json:"email_address"`
-	UserName               string             `json:"user_name"`
-	FirstName              string             `json:"first_name"`
-	LastName               string             `json:"last_name"`
-	FullName               string             `json:"full_name"`
-	Archived               bool               `json:"archived"`
-	Deactivated            bool               `json:"deactivated"`
-	IsTaxExempt            bool               `json:"is_tax_exempt"`
-	TaxExemptionCode       string             `json:"tax_exemption_code,omitempty"`
-	PasswordChangeRequired bool               `json:"password_change_required"`
-	ReceiveEmail           bool               `json:"receive_email"`
-	IsRegistered           bool               `json:"is_registered"`
-	IsActive               bool               `json:"is_active"`
-	Attributes             map[string]string  `json:"attributes,omitempty"`
-	Roles                  []string           `json:"roles,omitempty"`
-	CreatedAt              time.Time          `json:"created_at"`
-	UpdatedAt              time.Time          `json:"updated_at"`
-}
-
-// AddressDTO represents an address data transfer object
-type AddressDTO struct {
-	ID                  int64  `json:"id"`
-	AddressLine1        string `json:"address_line1"`
-	AddressLine2        string `json:"address_line2,omitempty"`
-	AddressLine3        string `json:"address_line3,omitempty"`
-	City                string `json:"city"`
-	StateProvinceRegion string `json:"state_province_region,omitempty"`
-	PostalCode          string `json:"postal_code"`
-	CountryCode         string `json:"country_code"`
-	CompanyName         string `json:"company_name,omitempty"`
-	FirstName           string `json:"first_name"`
-	LastName            string `json:"last_name"`
-	PrimaryPhone        string `json:"primary_phone,omitempty"`
-}
-
-// CustomerAddressDTO represents a customer address data transfer object
-type CustomerAddressDTO struct {
-	ID          int64       `json:"id"`
-	AddressName string      `json:"address_name"`
-	Archived    bool        `json:"archived"`
-	Address     *AddressDTO `json:"address"`
+	ID           int64     `json:"id"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	EmailAddress string    `json:"email_address"`
+	UserName     string    `json:"user_name"`
+	ReceiveEmail bool      `json:"receive_email"`
+	Deactivated  bool      `json:"deactivated"`
+	Archived     bool      `json:"archived"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // ToCustomerDTO converts a domain Customer to CustomerDTO
-func ToCustomerDTO(customer *domain.Customer) *CustomerDTO {
-	attributes := make(map[string]string)
-	for _, attr := range customer.Attributes {
-		attributes[attr.Name] = attr.Value
-	}
-
-	roles := make([]string, len(customer.Roles))
-	for i, role := range customer.Roles {
-		roles[i] = role.RoleName
-	}
-
+func ToCustomerDTO(c *domain.Customer) *CustomerDTO {
 	return &CustomerDTO{
-		ID:                     customer.ID,
-		EmailAddress:           customer.EmailAddress,
-		UserName:               customer.UserName,
-		FirstName:              customer.FirstName,
-		LastName:               customer.LastName,
-		FullName:               customer.GetFullName(),
-		Archived:               customer.Archived,
-		Deactivated:            customer.Deactivated,
-		IsTaxExempt:            customer.IsTaxExempt,
-		TaxExemptionCode:       customer.TaxExemptionCode,
-		PasswordChangeRequired: customer.PasswordChangeRequired,
-		ReceiveEmail:           customer.ReceiveEmail,
-		IsRegistered:           customer.IsRegistered,
-		IsActive:               customer.IsActive(),
-		Attributes:             attributes,
-		Roles:                  roles,
-		CreatedAt:              customer.CreatedAt,
-		UpdatedAt:              customer.UpdatedAt,
+		ID:           c.ID,
+		FirstName:    c.FirstName,
+		LastName:     c.LastName,
+		EmailAddress: c.EmailAddress,
+		UserName:     c.UserName,
+		ReceiveEmail: c.ReceiveEmail,
+		Deactivated:  c.Deactivated,
+		Archived:     c.Archived,
+		CreatedAt:    c.CreatedAt,
+		UpdatedAt:    c.UpdatedAt,
 	}
 }
 
-// ToAddressDTO converts a domain Address to AddressDTO
-func ToAddressDTO(address *domain.Address) *AddressDTO {
-	return &AddressDTO{
-		ID:                  address.ID,
-		AddressLine1:        address.AddressLine1,
-		AddressLine2:        address.AddressLine2,
-		AddressLine3:        address.AddressLine3,
-		City:                address.City,
-		StateProvinceRegion: address.StateProvinceRegion,
-		PostalCode:          address.PostalCode,
-		CountryCode:         address.CountryCode,
-		CompanyName:         address.CompanyName,
-		FirstName:           address.FirstName,
-		LastName:            address.LastName,
-		PrimaryPhone:        address.PrimaryPhone,
-	}
+// PaginatedResponse represents a paginated response (reusing structure if not imported)
+// Ideally this should be shared, but defining here for independence or using the one from catalog if imported.
+// customer_queries.go was trying to use application.PaginatedResponse.
+type PaginatedResponse struct {
+	Data       interface{} `json:"data"`
+	Page       int         `json:"page"`
+	PageSize   int         `json:"page_size"`
+	TotalItems int64       `json:"total_items"`
+	TotalPages int64       `json:"total_pages"`
 }
 
-// ToCustomerAddressDTO converts a domain CustomerAddress to CustomerAddressDTO
-func ToCustomerAddressDTO(customerAddress *domain.CustomerAddress) *CustomerAddressDTO {
-	var addressDTO *AddressDTO
-	if customerAddress.Address != nil {
-		addressDTO = ToAddressDTO(customerAddress.Address)
+// NewPaginatedResponse creates a new paginated response
+func NewPaginatedResponse(data interface{}, page, pageSize int, totalItems int64) *PaginatedResponse {
+	totalPages := totalItems / int64(pageSize)
+	if totalItems%int64(pageSize) > 0 {
+		totalPages++
 	}
 
-	return &CustomerAddressDTO{
-		ID:          customerAddress.ID,
-		AddressName: customerAddress.AddressName,
-		Archived:    customerAddress.Archived,
-		Address:     addressDTO,
+	return &PaginatedResponse{
+		Data:       data,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalItems: totalItems,
+		TotalPages: totalPages,
 	}
 }

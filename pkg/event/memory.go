@@ -37,10 +37,10 @@ func (mb *MemoryBus) Publish(ctx context.Context, event Event) error {
 	}
 
 	logger.WithFields(logger.Fields{
-		"event_type":    event.EventType(),
-		"event_id":      event.EventID(),
-		"aggregate_id":  event.AggregateID(),
-		"subscribers":   len(handlers),
+		"event_type":   event.EventType(),
+		"event_id":     event.EventID(),
+		"aggregate_id": event.AggregateID(),
+		"subscribers":  len(handlers),
 	}).Debug("Publishing event")
 
 	// Execute handlers concurrently

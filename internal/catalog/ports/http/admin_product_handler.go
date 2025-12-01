@@ -54,7 +54,7 @@ func (h *AdminProductHandler) CreateProduct(w http.ResponseWriter, r *http.Reque
 
 	productID, err := h.commandHandler.HandleCreateProduct(r.Context(), &cmd)
 	if err != nil {
-		h.logger.Error("failed to create product", "error", err)
+		h.logger.WithError(err).Error("failed to create product")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -90,7 +90,7 @@ func (h *AdminProductHandler) ListProducts(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.queryHandler.HandleListProducts(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list products", "error", err)
+		h.logger.WithError(err).Error("failed to list products")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -110,7 +110,7 @@ func (h *AdminProductHandler) GetProduct(w http.ResponseWriter, r *http.Request)
 	query := &queries.GetProductByIDQuery{ID: id}
 	product, err := h.queryHandler.HandleGetProductByID(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to get product", "error", err, "product_id", id)
+		h.logger.WithError(err).WithField("product_id", id).Error("failed to get product")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -135,7 +135,7 @@ func (h *AdminProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Reque
 	cmd.ID = id
 
 	if err := h.commandHandler.HandleUpdateProduct(r.Context(), &cmd); err != nil {
-		h.logger.Error("failed to update product", "error", err, "product_id", id)
+		h.logger.WithError(err).WithField("product_id", id).Error("failed to update product")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -156,7 +156,7 @@ func (h *AdminProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Reque
 
 	cmd := &commands.DeleteProductCommand{ID: id}
 	if err := h.commandHandler.HandleDeleteProduct(r.Context(), cmd); err != nil {
-		h.logger.Error("failed to delete product", "error", err, "product_id", id)
+		h.logger.WithError(err).WithField("product_id", id).Error("failed to delete product")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -177,7 +177,7 @@ func (h *AdminProductHandler) ArchiveProduct(w http.ResponseWriter, r *http.Requ
 
 	cmd := &commands.ArchiveProductCommand{ID: id}
 	if err := h.commandHandler.HandleArchiveProduct(r.Context(), cmd); err != nil {
-		h.logger.Error("failed to archive product", "error", err, "product_id", id)
+		h.logger.WithError(err).WithField("product_id", id).Error("failed to archive product")
 		pkghttp.RespondError(w, err)
 		return
 	}
@@ -220,7 +220,7 @@ func (h *AdminProductHandler) SearchProducts(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.queryHandler.HandleSearchProducts(r.Context(), query)
 	if err != nil {
-		h.logger.Error("failed to search products", "error", err)
+		h.logger.WithError(err).Error("failed to search products")
 		pkghttp.RespondError(w, err)
 		return
 	}
