@@ -42,45 +42,6 @@ func Security() func(next http.Handler) http.Handler {
 	}
 }
 
-// CORS is a middleware that handles CORS
-func CORS(allowedOrigins []string, allowedMethods []string, allowedHeaders []string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := r.Header.Get("Origin")
-
-			// Check if origin is allowed
-			allowed := false
-			for _, allowedOrigin := range allowedOrigins {
-				if allowedOrigin == "*" || allowedOrigin == origin {
-					allowed = true
-					break
-				}
-			}
-
-			if allowed {
-				if origin != "" {
-					w.Header().Set("Access-Control-Allow-Origin", origin)
-				} else if len(allowedOrigins) == 1 {
-					w.Header().Set("Access-Control-Allow-Origin", allowedOrigins[0])
-				}
-
-				w.Header().Set("Access-Control-Allow-Methods", joinStrings(allowedMethods, ", "))
-				w.Header().Set("Access-Control-Allow-Headers", joinStrings(allowedHeaders, ", "))
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-				w.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
-			}
-
-			// Handle preflight request
-			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
 // RequestID is a middleware that adds a unique request ID
 func RequestID() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

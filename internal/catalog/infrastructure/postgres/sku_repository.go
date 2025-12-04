@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/qhato/ecommerce/internal/catalog/domain"
 )
@@ -603,8 +604,7 @@ func (r *SKURepository) FindByProductID(ctx context.Context, productID int64) ([
 	if additionalProductID.Valid {
 		sku.AdditionalProductID = &additionalProductID.Int64
 	}
-		sk	
-		sk	us = append(skus, &sku)
+	skus = append(skus, &sku)
 	}
 
 	if err = rows.Err(); err != nil {
@@ -813,7 +813,7 @@ func (r *SKURepository) FindAll(ctx context.Context, filter *domain.SKUFilter) (
 		if additionalProductID.Valid {
 			sku.AdditionalProductID = &additionalProductID.Int64
 		}
-		sk	us = append(skus, &sku)
+		skus = append(skus, &sku)
 	}
 
 	if err = rows.Err(); err != nil {

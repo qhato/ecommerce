@@ -8,19 +8,19 @@ import (
 	"github.com/qhato/ecommerce/pkg/metrics"
 )
 
-// responseWriter wraps http.ResponseWriter to capture status code and size
-type responseWriter struct {
+// metricsResponseWriter wraps http.ResponseWriter to capture status code and size
+type metricsResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
 	size       int64
 }
 
-func (rw *responseWriter) WriteHeader(code int) {
+func (rw *metricsResponseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-func (rw *responseWriter) Write(b []byte) (int, error) {
+func (rw *metricsResponseWriter) Write(b []byte) (int, error) {
 	size, err := rw.ResponseWriter.Write(b)
 	rw.size += int64(size)
 	return size, err
@@ -32,7 +32,7 @@ func Metrics(next http.Handler) http.Handler {
 		start := time.Now()
 
 		// Wrap response writer to capture status code and size
-		wrapped := &responseWriter{
+		wrapped := &metricsResponseWriter{
 			ResponseWriter: w,
 			statusCode:     http.StatusOK,
 			size:           0,

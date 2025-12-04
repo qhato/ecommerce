@@ -2,11 +2,15 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/qhato/ecommerce/pkg/logging"
 	"github.com/qhato/ecommerce/pkg/metrics"
-	"github.com/qhato/ecommerce/pkg/tracing"
+	pkgtracing "github.com/qhato/ecommerce/pkg/tracing"
 )
 
 // LoggerAdapter adapts our logging.Logger to workflow.Logger
@@ -105,13 +109,13 @@ func NewTracerAdapter() *TracerAdapter {
 }
 
 func (t *TracerAdapter) StartSpan(ctx context.Context, name string) (context.Context, Span) {
-	ctx, span := tracing.StartSpan(ctx, name)
+	ctx, span := pkgtracing.StartSpan(ctx, name)
 	return ctx, &SpanAdapter{span: span}
 }
 
 // SpanAdapter adapts OpenTelemetry span to workflow.Span
 type SpanAdapter struct {
-	span tracing.Span
+	span trace.Span
 }
 
 func (s *SpanAdapter) End() {
@@ -120,59 +124,23 @@ func (s *SpanAdapter) End() {
 
 func (s *SpanAdapter) SetAttribute(key string, value interface{}) {
 	// Convert to OpenTelemetry attribute
+	var attr attribute.KeyValue
 	switch v := value.(type) {
 	case string:
-		s.span.SetAttributes(tracing.Attribute.String(key, v))
+		attr = attribute.String(key, v)
 	case int:
-		s.span.SetAttributes(tracing.Attribute.Int(key, v))
+		attr = attribute.Int(key, v)
 	case int64:
-		s.span.SetAttributes(tracing.Attribute.Int64(key, v))
+		attr = attribute.Int64(key, v)
 	case bool:
-		s.span.SetAttributes(tracing.Attribute.Bool(key, v))
+		attr = attribute.Bool(key, v)
 	default:
-		// Use Any for other types
-		s.span.SetAttributes(tracing.Attribute.Any(key, v))
+		// Convert to string for other types
+		attr = attribute.String(key, fmt.Sprint(v))
 	}
+	s.span.SetAttributes(attr)
 }
 
 func (s *SpanAdapter) RecordError(err error) {
 	s.span.RecordError(err)
-}
-
-// Note: This is a placeholder implementation
-// In the actual tracing package, you would have these methods
-type AttributeHelper struct{}
-
-var Attribute AttributeHelper
-
-func (AttributeHelper) String(key, value string) interface{} {
-	return struct{ key, value string }{key, value}
-}
-
-func (AttributeHelper) Int(key string, value int) interface{} {
-	return struct {
-		key   string
-		value int
-	}{key, value}
-}
-
-func (AttributeHelper) Int64(key string, value int64) interface{} {
-	return struct {
-		key   string
-		value int64
-	}{key, value}
-}
-
-func (AttributeHelper) Bool(key string, value bool) interface{} {
-	return struct {
-		key   string
-		value bool
-	}{key, value}
-}
-
-func (AttributeHelper) Any(key string, value interface{}) interface{} {
-	return struct {
-		key   string
-		value interface{}
-	}{key, value}
 }

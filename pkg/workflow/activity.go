@@ -1,7 +1,7 @@
 package workflow
 
-// Activity represents a single unit of work in a workflow
-type Activity interface {
+// ProcessActivity represents a single unit of work in a workflow
+type ProcessActivity interface {
 	// Execute performs the activity's work
 	Execute(ctx ProcessContext) error
 
@@ -22,34 +22,34 @@ type RollbackHandler interface {
 	RollbackState(ctx ProcessContext) error
 }
 
-// BaseActivity provides default implementations for Activity interface
-type BaseActivity struct {
+// BaseProcessActivity provides default implementations for ProcessActivity interface
+type BaseProcessActivity struct {
 	order    int
 	beanName string
 }
 
-// NewBaseActivity creates a new BaseActivity
-func NewBaseActivity(order int, beanName string) *BaseActivity {
-	return &BaseActivity{
+// NewBaseProcessActivity creates a new BaseProcessActivity
+func NewBaseProcessActivity(order int, beanName string) *BaseProcessActivity {
+	return &BaseProcessActivity{
 		order:    order,
 		beanName: beanName,
 	}
 }
 
-func (a *BaseActivity) ShouldExecute(ctx ProcessContext) bool {
+func (a *BaseProcessActivity) ShouldExecute(ctx ProcessContext) bool {
 	return true
 }
 
-func (a *BaseActivity) GetOrder() int {
+func (a *BaseProcessActivity) GetOrder() int {
 	return a.order
 }
 
-func (a *BaseActivity) GetBeanName() string {
+func (a *BaseProcessActivity) GetBeanName() string {
 	return a.beanName
 }
 
-// ActivityWithRollback combines Activity and RollbackHandler
+// ActivityWithRollback combines ProcessActivity and RollbackHandler
 type ActivityWithRollback interface {
-	Activity
+	ProcessActivity
 	RollbackHandler
 }

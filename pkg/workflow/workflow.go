@@ -8,16 +8,16 @@ import (
 	"github.com/qhato/ecommerce/pkg/logger"
 )
 
-// Workflow represents a sequence of activities to be executed
-type Workflow interface {
+// ProcessWorkflow represents a sequence of activities to be executed
+type ProcessWorkflow interface {
 	// Execute runs all activities in order
 	Execute(ctx context.Context, seedData interface{}) (ProcessContext, error)
 
 	// AddActivity adds an activity to the workflow
-	AddActivity(activity Activity)
+	AddActivity(activity ProcessActivity)
 
 	// GetActivities returns all activities in execution order
-	GetActivities() []Activity
+	GetActivities() []ProcessActivity
 
 	// GetName returns the workflow name
 	GetName() string

@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/qhato/ecommerce/internal/search/application"
-	httpPkg "github.com/qhato/ecommerce/pkg/http/response"
+	httpPkg "github.com/qhato/ecommerce/pkg/http"
 )
 
 // SearchHandler handles search HTTP requests

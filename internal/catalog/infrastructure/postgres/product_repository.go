@@ -470,6 +470,15 @@ func (r *ProductRepository) Search(ctx context.Context, query string, filter *do
 		querySQL += fmt.Sprintf(" ORDER BY %s %s", sortColumn, strings.ToUpper(filter.SortOrder))
 	}
 
+	// Count total results
+	var totalCount int64
+	// Use args without pagination for count
+	countArgs := args[:len(args)]
+	err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count search results: %w", err)
+	}
+
 	// Apply pagination
 	querySQL += fmt.Sprintf(" OFFSET $%d LIMIT $%d", argIdx, argIdx+1)
 	args = append(args, (filter.Page-1)*filter.PageSize, filter.PageSize)

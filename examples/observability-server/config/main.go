@@ -208,11 +208,13 @@ func (s *Server) setupRoutes() {
 
 	// CORS
 	if len(s.config.AllowedOrigins) > 0 {
-		r.Use(middleware.CORS(
-			s.config.AllowedOrigins,
-			[]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			[]string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
-		))
+		r.Use(middleware.CORS(middleware.CORSConfig{
+			AllowedOrigins:   s.config.AllowedOrigins,
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
+			AllowCredentials: true,
+			MaxAge:           300,
+		}))
 	}
 
 	// Request size limit (10MB)

@@ -1,30 +1,31 @@
 package workflow
 
 import (
+	"context"
 	"fmt"
 )
 
-// BaseActivity provides common functionality for activities
-type BaseActivity struct {
+// SimpleActivity provides common functionality for simple activities
+type SimpleActivity struct {
 	name        string
 	description string
 }
 
-// NewBaseActivity creates a new base activity
-func NewBaseActivity(name, description string) BaseActivity {
-	return BaseActivity{
+// NewSimpleActivity creates a new simple activity
+func NewSimpleActivity(name, description string) SimpleActivity {
+	return SimpleActivity{
 		name:        name,
 		description: description,
 	}
 }
 
 // Name returns the activity name
-func (a *BaseActivity) Name() string {
+func (a *SimpleActivity) Name() string {
 	return a.name
 }
 
 // Description returns the activity description
-func (a *BaseActivity) Description() string {
+func (a *SimpleActivity) Description() string {
 	return a.description
 }
 
@@ -129,7 +130,7 @@ func (b *WorkflowBuilder) Build() (*Workflow, error) {
 
 // ConditionalActivity wraps an activity with a condition
 type ConditionalActivity struct {
-	BaseActivity
+	SimpleActivity
 	activity  Activity
 	condition func(interface{}) bool
 }
@@ -137,9 +138,9 @@ type ConditionalActivity struct {
 // NewConditionalActivity creates a conditional activity
 func NewConditionalActivity(name string, activity Activity, condition func(interface{}) bool) *ConditionalActivity {
 	return &ConditionalActivity{
-		BaseActivity: NewBaseActivity(name, "Conditional: "+activity.Name()),
-		activity:     activity,
-		condition:    condition,
+		SimpleActivity: NewSimpleActivity(name, "Conditional: "+activity.Name()),
+		activity:       activity,
+		condition:      condition,
 	}
 }
 
@@ -161,15 +162,15 @@ func (a *ConditionalActivity) Compensate(ctx context.Context, input interface{})
 
 // ParallelActivity executes multiple activities in parallel
 type ParallelActivity struct {
-	BaseActivity
+	SimpleActivity
 	activities []Activity
 }
 
 // NewParallelActivity creates a parallel activity
 func NewParallelActivity(name string, activities ...Activity) *ParallelActivity {
 	return &ParallelActivity{
-		BaseActivity: NewBaseActivity(name, "Parallel execution"),
-		activities:   activities,
+		SimpleActivity: NewSimpleActivity(name, "Parallel execution"),
+		activities:     activities,
 	}
 }
 

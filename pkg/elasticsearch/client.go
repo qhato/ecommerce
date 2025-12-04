@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -84,7 +85,7 @@ func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping map[
 
 	req := esapi.IndicesCreateRequest{
 		Index: indexName,
-		Body:  esapi.NewJSONReader(body),
+		Body:  bytes.NewReader(body),
 	}
 
 	res, err := req.Do(ctx, c.es)
@@ -146,7 +147,7 @@ func (c *Client) IndexDocument(ctx context.Context, indexName, documentID string
 	req := esapi.IndexRequest{
 		Index:      indexName,
 		DocumentID: documentID,
-		Body:       esapi.NewJSONReader(body),
+		Body:       bytes.NewReader(body),
 		Refresh:    "true",
 	}
 
@@ -177,7 +178,7 @@ func (c *Client) UpdateDocument(ctx context.Context, indexName, documentID strin
 	req := esapi.UpdateRequest{
 		Index:      indexName,
 		DocumentID: documentID,
-		Body:       esapi.NewJSONReader(body),
+		Body:       bytes.NewReader(body),
 		Refresh:    "true",
 	}
 
@@ -239,7 +240,7 @@ func (c *Client) BulkIndexDocuments(ctx context.Context, indexName string, docum
 	}
 
 	req := esapi.BulkRequest{
-		Body:    esapi.NewJSONReader(bulkBody),
+		Body:    bytes.NewReader(bulkBody),
 		Refresh: "true",
 	}
 
@@ -275,7 +276,7 @@ func (c *Client) Search(ctx context.Context, indexName string, query map[string]
 
 	req := esapi.SearchRequest{
 		Index: []string{indexName},
-		Body:  esapi.NewJSONReader(body),
+		Body:  bytes.NewReader(body),
 	}
 
 	res, err := req.Do(ctx, c.es)

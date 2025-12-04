@@ -6,7 +6,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -27,13 +26,13 @@ func Tracing(serviceName string) func(next http.Handler) http.Handler {
 				spanName,
 				trace.WithSpanKind(trace.SpanKindServer),
 				trace.WithAttributes(
-					semconv.HTTPMethod(r.Method),
-					semconv.HTTPTarget(r.URL.Path),
-					semconv.HTTPRoute(r.URL.Path),
-					semconv.HTTPScheme(r.URL.Scheme),
-					semconv.HTTPHost(r.Host),
-					semconv.HTTPUserAgent(r.UserAgent()),
-					semconv.NetPeerIP(r.RemoteAddr),
+					attribute.String("http.method", r.Method),
+					attribute.String("http.target", r.URL.Path),
+					attribute.String("http.route", r.URL.Path),
+					attribute.String("http.scheme", r.URL.Scheme),
+					attribute.String("http.host", r.Host),
+					attribute.String("http.user_agent", r.UserAgent()),
+					attribute.String("net.peer.ip", r.RemoteAddr),
 				),
 			)
 			defer span.End()
@@ -48,7 +47,7 @@ func Tracing(serviceName string) func(next http.Handler) http.Handler {
 			next.ServeHTTP(wrapped, r.WithContext(ctx))
 
 			// Set status code attribute
-			span.SetAttributes(semconv.HTTPStatusCode(wrapped.statusCode))
+			span.SetAttributes(attribute.Int("http.status_code", wrapped.statusCode))
 
 			// Mark span as error if status code is 5xx
 			if wrapped.statusCode >= 500 {
