@@ -41,8 +41,8 @@ import (
 	inventoryPersistence "github.com/qhato/ecommerce/internal/inventory/infrastructure/persistence"
 
 	// Tax
-	taxApp "github.com/qhato/ecommerce/internal/tax/application"
-	taxPersistence "github.com/qhato/ecommerce/internal/tax/infrastructure/persistence"
+	// taxApp "github.com/qhato/ecommerce/internal/tax/application" // Commented out - old tax implementation
+	// taxPersistence "github.com/qhato/ecommerce/internal/tax/infrastructure/persistence" // Commented out - old tax implementation
 
 	// Payment
 	//paymentCommands "github.com/qhato/ecommerce/internal/payment/application/commands"
@@ -199,13 +199,13 @@ func main() {
 	// Inventory application services
 	inventoryService := inventoryApp.NewInventoryService(inventoryLevelRepo) // NewInventoryService takes a repo
 
-	// ========== TAX BOUNDED CONTEXT ========== 
+	// ========== TAX BOUNDED CONTEXT ==========
 
 	// Tax repositories
-	taxDetailRepo := taxPersistence.NewPostgresTaxDetailRepository(db)
+	// taxDetailRepo := taxPersistence.NewPostgresTaxDetailRepository(db) // Commented out - old tax implementation
 
 	// Tax application services
-	taxService := taxApp.NewTaxService(taxDetailRepo) // Pass taxDetailRepository
+	// taxService := taxApp.NewTaxService(taxDetailRepo) // Commented out - old tax implementation
 
 	// ========== ORDER BOUNDED CONTEXT ========== 
 
@@ -229,7 +229,7 @@ func main() {
 		inventoryService,
 		productService,
 		skuService,
-		taxService,
+		// taxService, // Commented out - old tax implementation
 	)
 
 	// Order query handlers

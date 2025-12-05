@@ -1,0 +1,43 @@
+{{define "title"}}Order Confirmation{{end}}
+
+{{define "content"}}
+<h2>Thank you for your order!</h2>
+<p>Your order <strong>#{{.OrderNumber}}</strong> has been confirmed.</p>
+
+<h3>Order Details</h3>
+<table style="width: 100%; border-collapse: collapse;">
+    <thead>
+        <tr style="background-color: #f2f2f2;">
+            <th style="padding: 10px; text-align: left;">Product</th>
+            <th style="padding: 10px; text-align: right;">Quantity</th>
+            <th style="padding: 10px; text-align: right;">Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Items}}
+        <tr>
+            <td style="padding: 10px;">{{.ProductName}}</td>
+            <td style="padding: 10px; text-align: right;">{{.Quantity}}</td>
+            <td style="padding: 10px; text-align: right;">${{printf "%.2f" .Price}}</td>
+        </tr>
+        {{end}}
+    </tbody>
+    <tfoot>
+        <tr style="font-weight: bold; background-color: #f2f2f2;">
+            <td colspan="2" style="padding: 10px;">Total</td>
+            <td style="padding: 10px; text-align: right;">${{printf "%.2f" .OrderTotal}}</td>
+        </tr>
+    </tfoot>
+</table>
+
+<h3>Shipping Address</h3>
+<p>
+    {{.ShippingAddr.FirstName}} {{.ShippingAddr.LastName}}<br>
+    {{.ShippingAddr.Line1}}<br>
+    {{if .ShippingAddr.Line2}}{{.ShippingAddr.Line2}}<br>{{end}}
+    {{.ShippingAddr.City}}, {{.ShippingAddr.State}} {{.ShippingAddr.ZipCode}}<br>
+    {{.ShippingAddr.Country}}
+</p>
+
+<p>We'll send you a shipping confirmation email as soon as your order ships.</p>
+{{end}}

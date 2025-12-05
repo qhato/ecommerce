@@ -1,0 +1,23 @@
+{{define "title"}}Order Confirmation{{end}}
+
+{{define "content"}}
+Thank you for your order!
+
+Your order #{{.OrderNumber}} has been confirmed.
+
+Order Details:
+{{range .Items}}
+- {{.ProductName}} x {{.Quantity}} - ${{printf "%.2f" .Price}}
+{{end}}
+
+Total: ${{printf "%.2f" .OrderTotal}}
+
+Shipping Address:
+{{.ShippingAddr.FirstName}} {{.ShippingAddr.LastName}}
+{{.ShippingAddr.Line1}}
+{{if .ShippingAddr.Line2}}{{.ShippingAddr.Line2}}{{end}}
+{{.ShippingAddr.City}}, {{.ShippingAddr.State}} {{.ShippingAddr.ZipCode}}
+{{.ShippingAddr.Country}}
+
+We'll send you a shipping confirmation email as soon as your order ships.
+{{end}}

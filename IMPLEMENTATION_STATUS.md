@@ -19,12 +19,19 @@ Located in `pkg/` directory:
 - **cache**: Redis + in-memory caching
 - **event**: Event bus implementation
 - **auth**: JWT authentication
-- **middleware**: HTTP middlewares (CORS, Auth, Logging, Recovery)
+- **jwt**: JWT authentication with refresh tokens and blacklist (Sprint 3-4)
+- **middleware**: HTTP middlewares (CORS, Auth, Logging, Recovery, Metrics, Tracing, Rate Limit, Security)
 - **validator**: Request validation
 - **http/response**: HTTP response helpers
 - **apperrors**: Custom error types
+- **metrics**: Prometheus metrics (30+ metrics) (Sprint 3-4)
+- **health**: Health check endpoints (Sprint 3-4)
+- **tracing**: OpenTelemetry distributed tracing (Sprint 3-4)
+- **logging**: Structured logging with trace context (Sprint 3-4)
+- **ratelimit**: Rate limiting (Redis-based) (Sprint 3-4)
+- **workflow**: Workflow orchestration engine with saga pattern (Sprint 5-6)
 
-**Files**: 20 Go files
+**Files**: 26 Go files
 
 ---
 
@@ -353,12 +360,17 @@ ecommerce/
 │   │   ├── application/
 │   │   ├── infrastructure/
 │   │   └── ports/
-│   └── fulfillment/     # ✅ 100% Complete (9 files)
-│       ├── domain/
-│       ├── application/
-│       ├── infrastructure/
-│       └── ports/
-├── pkg/                 # ✅ 100% Complete (Shared Kernel - 20 files)
+│   ├── fulfillment/     # ✅ 100% Complete (9 files)
+│   │   ├── domain/
+│   │   ├── application/
+│   │   ├── infrastructure/
+│   │   └── ports/
+│   └── workflows/       # ✅ 100% Complete (5 files) - Sprint 5-6
+│       ├── pricing/     # Pricing workflow (4 activities)
+│       ├── checkout/    # Checkout workflow (4 activities, saga)
+│       ├── payment/     # Payment workflow (3 activities, saga)
+│       └── fulfillment/ # Fulfillment workflow (3 activities, saga)
+├── pkg/                 # ✅ 100% Complete (Shared Kernel - 26 files)
 ├── scripts/             # ✅ Migration scripts
 ├── docker-compose.yml   # ✅ Complete
 ├── Dockerfile.admin     # ✅ Complete
@@ -416,17 +428,37 @@ This implementation provides a **complete, production-ready** foundation for an 
   - Order (Order Management, Lifecycle)
   - Payment (Full Payment Lifecycle with Refunds)
   - Fulfillment (Shipment Tracking, Delivery)
+- ✅ **4 Workflow Orchestrations** (Sprint 5-6)
+  - Pricing Workflow (4 activities, read-only)
+  - Checkout Workflow (4 activities, saga pattern)
+  - Payment Workflow (3 activities, saga pattern)
+  - Fulfillment Workflow (3 activities, saga pattern)
 - ✅ **85+ API Endpoints** across Admin and Storefront
-- ✅ **72+ Go Files** with ~13,200+ lines of clean code
+- ✅ **77+ Go Files** with ~14,350+ lines of clean code
 
 ### ✅ Production Ready Features
 - ✅ PostgreSQL persistence for all entities
 - ✅ Redis + in-memory caching
 - ✅ Event-driven architecture with event bus
 - ✅ Request validation with go-playground/validator
-- ✅ Structured logging with Zap
+- ✅ Structured logging with Zap + trace context (Sprint 3-4)
 - ✅ Error handling with custom error types
 - ✅ CORS and security middleware
+- ✅ **Observability Stack** (Sprint 3-4)
+  - Prometheus metrics (30+ metrics)
+  - OpenTelemetry distributed tracing
+  - Health checks (/health, /health/live, /health/ready)
+  - Grafana dashboards
+  - Jaeger tracing UI
+- ✅ **Security Infrastructure** (Sprint 3-4)
+  - JWT authentication with refresh tokens
+  - Token blacklist (Redis)
+  - Rate limiting (sliding window, token bucket)
+  - Security headers (CSP, HSTS, X-Frame-Options)
+- ✅ **Workflow Orchestration** (Sprint 5-6)
+  - Saga pattern with automatic compensation
+  - Retry logic with exponential backoff
+  - Full observability integration
 - ✅ Graceful shutdown
 - ✅ Docker containerization
 - ✅ Comprehensive Makefile

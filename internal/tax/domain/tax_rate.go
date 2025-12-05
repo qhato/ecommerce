@@ -1,279 +1,187 @@
 package domain
 
-import "time"
+import (
+	"time"
 
-// TaxType represents the type of tax
-type TaxType string
-
-const (
-	TaxTypeSales    TaxType = "SALES"    // Sales tax
-	TaxTypeVAT      TaxType = "VAT"      // Value Added Tax
-	TaxTypeGST      TaxType = "GST"      // Goods and Services Tax
-	TaxTypeExcise   TaxType = "EXCISE"   // Excise tax
-	TaxTypeCustoms  TaxType = "CUSTOMS"  // Customs duty
-	TaxTypeProperty TaxType = "PROPERTY" // Property tax
+	"github.com/shopspring/decimal"
 )
 
-// TaxRate represents a tax rate configuration for a jurisdiction
+// TaxRateType defines the type of tax rate calculation
+type TaxRateType string
+
+const (
+	TaxRateTypePercentage TaxRateType = "PERCENTAGE" // Percentage-based tax
+	TaxRateTypeFlat       TaxRateType = "FLAT"       // Flat amount tax
+	TaxRateTypeCompound   TaxRateType = "COMPOUND"   // Compound tax (tax on tax)
+)
+
+// TaxCategory defines categories of taxable items
+type TaxCategory string
+
+const (
+	TaxCategoryGeneral   TaxCategory = "GENERAL"   // General merchandise
+	TaxCategoryFood      TaxCategory = "FOOD"      // Food and beverages
+	TaxCategoryClothing  TaxCategory = "CLOTHING"  // Clothing and apparel
+	TaxCategoryDigital   TaxCategory = "DIGITAL"   // Digital goods and services
+	TaxCategoryShipping  TaxCategory = "SHIPPING"  // Shipping and delivery
+	TaxCategoryService   TaxCategory = "SERVICE"   // Services
+	TaxCategoryExempt    TaxCategory = "EXEMPT"    // Exempt items
+)
+
+// TaxRate represents a tax rate for a jurisdiction
+// Business Logic: Define tax rates with categories, thresholds, and compound support
 type TaxRate struct {
-	ID               int64
-	Country          string  // Country code (e.g., "US", "CA", "GB")
-	Region           string  // State/Province/Region code (e.g., "CA", "NY", "ON")
-	JurisdictionName string  // Full jurisdiction name (e.g., "California", "New York")
-	TaxName          string  // Name of the tax (e.g., "State Sales Tax", "VAT")
-	TaxType          TaxType // Type of tax
-	Rate             float64 // Tax rate as decimal (e.g., 0.0825 for 8.25%)
-	Priority         int     // Priority for applying multiple taxes (lower = applied first)
-	Active           bool    // Whether this tax rate is currently active
-	EffectiveFrom    time.Time
-	EffectiveTo      *time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID                int64
+	JurisdictionID    int64
+	Name              string
+	TaxType           TaxRateType
+	Rate              decimal.Decimal // For percentage rates, 0.0825 = 8.25%
+	TaxCategory       TaxCategory
+	IsCompound        bool // Whether this tax is calculated on subtotal + previous taxes
+	IsShippingTaxable bool
+	MinThreshold      *decimal.Decimal // Minimum amount for tax to apply
+	MaxThreshold      *decimal.Decimal // Maximum amount for tax to apply
+	Priority          int              // Lower = applied first
+	IsActive          bool
+	StartDate         *time.Time
+	EndDate           *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // NewTaxRate creates a new TaxRate
-func NewTaxRate(
-	country, region, jurisdictionName, taxName string,
-	taxType TaxType,
-	rate float64,
-	effectiveFrom time.Time,
-) (*TaxRate, error) {
-	if country == "" {
-		return nil, NewDomainError("Country cannot be empty for TaxRate")
+func NewTaxRate(jurisdictionID int64, name string, taxType TaxRateType, rate decimal.Decimal, category TaxCategory) (*TaxRate, error) {
+	if jurisdictionID == 0 {
+		return nil, ErrJurisdictionIDRequired
 	}
-	if jurisdictionName == "" {
-		return nil, NewDomainError("JurisdictionName cannot be empty for TaxRate")
+	if name == "" {
+		return nil, ErrTaxRateNameRequired
 	}
-	if taxName == "" {
-		return nil, NewDomainError("TaxName cannot be empty for TaxRate")
-	}
-	if rate < 0 || rate > 1 {
-		return nil, NewDomainError("Tax rate must be between 0 and 1")
+	if rate.IsNegative() {
+		return nil, ErrTaxRateCannotBeNegative
 	}
 
 	now := time.Now()
 	return &TaxRate{
-		Country:          country,
-		Region:           region,
-		JurisdictionName: jurisdictionName,
-		TaxName:          taxName,
-		TaxType:          taxType,
-		Rate:             rate,
-		Priority:         50, // Default priority
-		Active:           true,
-		EffectiveFrom:    effectiveFrom,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		JurisdictionID:    jurisdictionID,
+		Name:              name,
+		TaxType:           taxType,
+		Rate:              rate,
+		TaxCategory:       category,
+		IsCompound:        false,
+		IsShippingTaxable: true,
+		Priority:          0,
+		IsActive:          true,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}, nil
 }
 
-// IsEffective checks if the tax rate is effective for the given date
-func (tr *TaxRate) IsEffective(date time.Time) bool {
-	if !tr.Active {
+// CalculateTax calculates the tax amount for a given price and quantity
+func (tr *TaxRate) CalculateTax(price decimal.Decimal, quantity int, existingTaxes decimal.Decimal) decimal.Decimal {
+	// Calculate total amount
+	amount := price.Mul(decimal.NewFromInt(int64(quantity)))
+
+	// Check thresholds
+	if tr.MinThreshold != nil && amount.LessThan(*tr.MinThreshold) {
+		return decimal.Zero
+	}
+	if tr.MaxThreshold != nil && amount.GreaterThan(*tr.MaxThreshold) {
+		return decimal.Zero
+	}
+
+	// Calculate tax based on type
+	switch tr.TaxType {
+	case TaxRateTypePercentage:
+		taxableAmount := amount
+		if tr.IsCompound {
+			// Compound tax: calculate on subtotal + existing taxes
+			taxableAmount = amount.Add(existingTaxes)
+		}
+		return taxableAmount.Mul(tr.Rate)
+
+	case TaxRateTypeFlat:
+		// Flat tax per quantity
+		return tr.Rate.Mul(decimal.NewFromInt(int64(quantity)))
+
+	case TaxRateTypeCompound:
+		// Compound tax: calculate on subtotal + existing taxes
+		taxableAmount := amount.Add(existingTaxes)
+		return taxableAmount.Mul(tr.Rate)
+
+	default:
+		return decimal.Zero
+	}
+}
+
+// AppliesTo checks if this rate applies to a given category and amount
+func (tr *TaxRate) AppliesTo(category TaxCategory, subtotal decimal.Decimal) bool {
+	// Check category match
+	if tr.TaxCategory != category {
 		return false
 	}
 
-	if date.Before(tr.EffectiveFrom) {
+	// Check thresholds
+	if tr.MinThreshold != nil && subtotal.LessThan(*tr.MinThreshold) {
 		return false
 	}
-
-	if tr.EffectiveTo != nil && date.After(*tr.EffectiveTo) {
+	if tr.MaxThreshold != nil && subtotal.GreaterThan(*tr.MaxThreshold) {
 		return false
 	}
 
 	return true
 }
 
-// SetEffectiveTo sets the end date for this tax rate
-func (tr *TaxRate) SetEffectiveTo(date time.Time) {
-	tr.EffectiveTo = &date
-	tr.UpdatedAt = time.Now()
-}
-
-// Deactivate marks the tax rate as inactive
-func (tr *TaxRate) Deactivate() {
-	tr.Active = false
-	tr.UpdatedAt = time.Now()
-}
-
-// Activate marks the tax rate as active
-func (tr *TaxRate) Activate() {
-	tr.Active = true
-	tr.UpdatedAt = time.Now()
-}
-
-// UpdateRate updates the tax rate
-func (tr *TaxRate) UpdateRate(rate float64) error {
-	if rate < 0 || rate > 1 {
-		return NewDomainError("Tax rate must be between 0 and 1")
+// IsCurrentlyActive checks if the rate is currently active
+func (tr *TaxRate) IsCurrentlyActive() bool {
+	if !tr.IsActive {
+		return false
 	}
-	tr.Rate = rate
+
+	now := time.Now()
+
+	// Check start date
+	if tr.StartDate != nil && now.Before(*tr.StartDate) {
+		return false
+	}
+
+	// Check end date
+	if tr.EndDate != nil && now.After(*tr.EndDate) {
+		return false
+	}
+
+	return true
+}
+
+// Activate activates the tax rate
+func (tr *TaxRate) Activate() {
+	tr.IsActive = true
+	tr.UpdatedAt = time.Now()
+}
+
+// Deactivate deactivates the tax rate
+func (tr *TaxRate) Deactivate() {
+	tr.IsActive = false
+	tr.UpdatedAt = time.Now()
+}
+
+// SetThresholds sets the minimum and maximum thresholds
+func (tr *TaxRate) SetThresholds(min, max *decimal.Decimal) error {
+	if min != nil && max != nil && max.LessThan(*min) {
+		return ErrInvalidThresholdRange
+	}
+	tr.MinThreshold = min
+	tr.MaxThreshold = max
 	tr.UpdatedAt = time.Now()
 	return nil
 }
 
-// SetPriority sets the priority for applying this tax
-func (tr *TaxRate) SetPriority(priority int) {
-	tr.Priority = priority
+// UpdateRate updates the tax rate value
+func (tr *TaxRate) UpdateRate(rate decimal.Decimal) error {
+	if rate.IsNegative() {
+		return ErrTaxRateCannotBeNegative
+	}
+	tr.Rate = rate
 	tr.UpdatedAt = time.Now()
-}
-
-// TaxJurisdiction represents a taxable jurisdiction
-type TaxJurisdiction struct {
-	ID               int64
-	Country          string
-	Region           string
-	JurisdictionName string
-	PostalCode       *string // Optional postal code for specific areas
-	City             *string // Optional city for specific areas
-	County           *string // Optional county for specific areas
-	Active           bool
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-}
-
-// NewTaxJurisdiction creates a new TaxJurisdiction
-func NewTaxJurisdiction(country, region, jurisdictionName string) (*TaxJurisdiction, error) {
-	if country == "" || jurisdictionName == "" {
-		return nil, NewDomainError("Country and JurisdictionName cannot be empty")
-	}
-
-	now := time.Now()
-	return &TaxJurisdiction{
-		Country:          country,
-		Region:           region,
-		JurisdictionName: jurisdictionName,
-		Active:           true,
-		CreatedAt:        now,
-		UpdatedAt:        now,
-	}, nil
-}
-
-// MatchesAddress checks if this jurisdiction matches the given address
-func (tj *TaxJurisdiction) MatchesAddress(country, region, postalCode, city, county string) bool {
-	if !tj.Active {
-		return false
-	}
-
-	// Country must match
-	if tj.Country != country {
-		return false
-	}
-
-	// Region must match if specified
-	if tj.Region != "" && tj.Region != region {
-		return false
-	}
-
-	// Check optional filters
-	if tj.PostalCode != nil && *tj.PostalCode != postalCode {
-		return false
-	}
-
-	if tj.City != nil && *tj.City != city {
-		return false
-	}
-
-	if tj.County != nil && *tj.County != county {
-		return false
-	}
-
-	return true
-}
-
-// TaxExemption represents a tax exemption for a customer or category
-type TaxExemption struct {
-	ID             int64
-	CustomerID     *string   // Optional: customer-specific exemption
-	CategoryID     *string   // Optional: category-specific exemption
-	ProductID      *string   // Optional: product-specific exemption
-	ExemptionCode  string    // Code identifying the exemption (e.g., "RESALE", "NONPROFIT")
-	Reason         string    // Reason for exemption
-	DocumentNumber *string   // Certificate or document number
-	Country        string    // Country where exemption applies
-	Region         *string   // Optional: region where exemption applies
-	ExemptTaxTypes []TaxType // Which tax types are exempt
-	Active         bool
-	EffectiveFrom  time.Time
-	EffectiveTo    *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-}
-
-// NewTaxExemption creates a new TaxExemption
-func NewTaxExemption(
-	exemptionCode, reason, country string,
-	exemptTaxTypes []TaxType,
-	effectiveFrom time.Time,
-) (*TaxExemption, error) {
-	if exemptionCode == "" || reason == "" || country == "" {
-		return nil, NewDomainError("ExemptionCode, Reason, and Country cannot be empty")
-	}
-
-	if len(exemptTaxTypes) == 0 {
-		return nil, NewDomainError("At least one tax type must be specified for exemption")
-	}
-
-	now := time.Now()
-	return &TaxExemption{
-		ExemptionCode:  exemptionCode,
-		Reason:         reason,
-		Country:        country,
-		ExemptTaxTypes: exemptTaxTypes,
-		Active:         true,
-		EffectiveFrom:  effectiveFrom,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-	}, nil
-}
-
-// IsEffective checks if the exemption is effective for the given date
-func (te *TaxExemption) IsEffective(date time.Time) bool {
-	if !te.Active {
-		return false
-	}
-
-	if date.Before(te.EffectiveFrom) {
-		return false
-	}
-
-	if te.EffectiveTo != nil && date.After(*te.EffectiveTo) {
-		return false
-	}
-
-	return true
-}
-
-// AppliesToCustomer checks if this exemption applies to a specific customer
-func (te *TaxExemption) AppliesToCustomer(customerID string) bool {
-	if te.CustomerID == nil {
-		return false
-	}
-	return *te.CustomerID == customerID
-}
-
-// AppliesToProduct checks if this exemption applies to a specific product
-func (te *TaxExemption) AppliesToProduct(productID string) bool {
-	if te.ProductID == nil {
-		return false
-	}
-	return *te.ProductID == productID
-}
-
-// AppliesToCategory checks if this exemption applies to a specific category
-func (te *TaxExemption) AppliesToCategory(categoryID string) bool {
-	if te.CategoryID == nil {
-		return false
-	}
-	return *te.CategoryID == categoryID
-}
-
-// ExemptsTaxType checks if this exemption covers a specific tax type
-func (te *TaxExemption) ExemptsTaxType(taxType TaxType) bool {
-	for _, exemptType := range te.ExemptTaxTypes {
-		if exemptType == taxType {
-			return true
-		}
-	}
-	return false
+	return nil
 }

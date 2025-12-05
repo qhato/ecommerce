@@ -1,0 +1,8 @@
+{{block "title" .}}E-Commerce Platform{{end}}
+========================================
+
+{{block "content" .}}{{end}}
+
+========================================
+© 2025 E-Commerce Platform. All rights reserved.
+This is an automated email, please do not reply.

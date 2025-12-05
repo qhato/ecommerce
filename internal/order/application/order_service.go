@@ -11,7 +11,7 @@ import (
 	offerApp "github.com/qhato/ecommerce/internal/offer/application"
 	offerDomain "github.com/qhato/ecommerce/internal/offer/domain"
 	"github.com/qhato/ecommerce/internal/order/domain"
-	taxApp "github.com/qhato/ecommerce/internal/tax/application"
+	// taxApp "github.com/qhato/ecommerce/internal/tax/application" // Commented out - old tax implementation
 )
 
 // OrderService defines the application service for order-related operations.
@@ -102,7 +102,7 @@ type orderService struct {
 	inventoryService        inventoryApp.InventoryService
 	productService          catalogApp.ProductService
 	skuService              catalogApp.SkuService
-	taxService              taxApp.TaxService
+	// taxService              taxApp.TaxService // Commented out - old tax implementation
 }
 
 // NewOrderService creates a new instance of OrderService.
@@ -117,7 +117,7 @@ func NewOrderService(
 	inventoryService inventoryApp.InventoryService,
 	productService catalogApp.ProductService,
 	skuService catalogApp.SkuService,
-	taxService taxApp.TaxService,
+	// taxService taxApp.TaxService, // Commented out - old tax implementation
 ) OrderService {
 	return &orderService{
 		orderRepo:               orderRepo,
@@ -130,7 +130,7 @@ func NewOrderService(
 		inventoryService:        inventoryService,
 		productService:          productService,
 		skuService:              skuService,
-		taxService:              taxService,
+		// taxService:              taxService, // Commented out - old tax implementation
 	}
 }
 
@@ -250,12 +250,13 @@ func (s *orderService) AddItemToOrder(ctx context.Context, orderID int64, cmd *A
 
 	// Calculate initial tax based on TaxService (simplified)
 	taxAmount := 0.0
-	if cmd.TaxCategory != "" {
-		taxAmount, err = s.taxService.CalculateTaxForItem(ctx, orderID, item.TotalPrice, cmd.TaxCategory)
-		if err != nil {
-			return nil, fmt.Errorf("failed to calculate tax for item: %w", err)
-		}
-	}
+	// Commented out - old tax implementation
+	// if cmd.TaxCategory != "" {
+	// 	taxAmount, err = s.taxService.CalculateTaxForItem(ctx, orderID, item.TotalPrice, cmd.TaxCategory)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to calculate tax for item: %w", err)
+	// 	}
+	// }
 	item.SetTaxAmount(taxAmount)
 
 	// 5. Save OrderItem
@@ -349,12 +350,13 @@ func (s *orderService) UpdateOrderItemQuantity(ctx context.Context, orderItemID 
 
 	// Recalculate tax for the item
 	taxAmount := 0.0
-	if item.TaxCategory != "" {
-		taxAmount, err = s.taxService.CalculateTaxForItem(ctx, order.ID, item.TotalPrice, item.TaxCategory)
-		if err != nil {
-			return nil, fmt.Errorf("failed to recalculate tax for item: %w", err)
-		}
-	}
+	// Commented out - old tax implementation
+	// if item.TaxCategory != "" {
+	// 	taxAmount, err = s.taxService.CalculateTaxForItem(ctx, order.ID, item.TotalPrice, item.TaxCategory)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to recalculate tax for item: %w", err)
+	// 	}
+	// }
 	item.SetTaxAmount(taxAmount)
 
 	err = s.orderItemRepo.Save(ctx, item)
