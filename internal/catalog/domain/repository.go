@@ -337,3 +337,34 @@ func NewProductOptionFilter() *ProductOptionFilter {
 		SortOrder: "asc",
 	}
 }
+
+// ProductBundleRepository defines the interface for product bundle persistence
+type ProductBundleRepository interface {
+	Create(ctx context.Context, bundle *ProductBundle) error
+	Update(ctx context.Context, bundle *ProductBundle) error
+	Delete(ctx context.Context, id int64) error
+	FindByID(ctx context.Context, id int64) (*ProductBundle, error)
+	FindAll(ctx context.Context, activeOnly bool) ([]*ProductBundle, error)
+	FindByProduct(ctx context.Context, productID int64) ([]*ProductBundle, error)
+}
+
+// ProductBundleItemRepository defines the interface for product bundle item persistence
+type ProductBundleItemRepository interface {
+	Create(ctx context.Context, item *ProductBundleItem) error
+	Delete(ctx context.Context, id int64) error
+	FindByBundleID(ctx context.Context, bundleID int64) ([]*ProductBundleItem, error)
+	DeleteByBundleID(ctx context.Context, bundleID int64) error
+}
+
+// ProductRelationshipRepository defines the interface for product relationship persistence
+type ProductRelationshipRepository interface {
+	Create(ctx context.Context, relationship *ProductRelationship) error
+	Update(ctx context.Context, relationship *ProductRelationship) error
+	Delete(ctx context.Context, id int64) error
+	FindByID(ctx context.Context, id int64) (*ProductRelationship, error)
+	FindByProductID(ctx context.Context, productID int64, relationshipType *ProductRelationshipType) ([]*ProductRelationship, error)
+	FindCrossSell(ctx context.Context, productID int64) ([]*ProductRelationship, error)
+	FindUpSell(ctx context.Context, productID int64) ([]*ProductRelationship, error)
+	FindRelated(ctx context.Context, productID int64) ([]*ProductRelationship, error)
+	ExistsByProducts(ctx context.Context, productID, relatedProductID int64, relationshipType ProductRelationshipType) (bool, error)
+}

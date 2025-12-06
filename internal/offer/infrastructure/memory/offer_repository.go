@@ -49,15 +49,12 @@ func (r *OfferRepository) FindByID(ctx context.Context, id int64) (*domain.Offer
 }
 
 // FindByCode retrieves an offer by its promotional code.
+// Note: Codes are now managed separately in OfferCode entity
 func (r *OfferRepository) FindByCode(ctx context.Context, code string) (*domain.Offer, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	for _, offer := range r.offers {
-		if offer.Code != nil && *offer.Code == code {
-			return offer, nil
-		}
-	}
+	// This method is deprecated - use OfferCodeRepository instead
 	return nil, nil
 }
 
@@ -68,7 +65,7 @@ func (r *OfferRepository) FindActiveOffers(ctx context.Context) ([]*domain.Offer
 
 	var activeOffers []*domain.Offer
 	for _, offer := range r.offers {
-		if offer.CanApply() { // Reuse domain logic for active check
+		if !offer.Archived {
 			activeOffers = append(activeOffers, offer)
 		}
 	}

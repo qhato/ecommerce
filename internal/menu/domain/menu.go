@@ -16,10 +16,13 @@ const (
 type Menu struct {
 	ID          int64
 	Name        string
+	Slug        string
 	Type        MenuType
 	Description string
+	Location    string
 	IsActive    bool
 	SortOrder   int
+	Items       []MenuItem
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -36,29 +39,36 @@ type MenuItem struct {
 	CSSClass    string
 	SortOrder   int
 	IsActive    bool
+	Permissions *string
 	Children    []MenuItem
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
 // NewMenu creates a new menu
-func NewMenu(name string, menuType MenuType) (*Menu, error) {
+func NewMenu(name, slug, description, location string) (*Menu, error) {
 	if name == "" {
 		return nil, ErrMenuNameRequired
+	}
+	if slug == "" {
+		return nil, ErrMenuSlugRequired
 	}
 
 	now := time.Now()
 	return &Menu{
-		Name:      name,
-		Type:      menuType,
-		IsActive:  true,
-		CreatedAt: now,
-		UpdatedAt: now,
+		Name:        name,
+		Slug:        slug,
+		Description: description,
+		Location:    location,
+		IsActive:    true,
+		Items:       make([]MenuItem, 0),
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}, nil
 }
 
 // NewMenuItem creates a new menu item
-func NewMenuItem(menuID int64, title, url string) (*MenuItem, error) {
+func NewMenuItem(menuID int64, parentID *int64, title, url string) (*MenuItem, error) {
 	if title == "" {
 		return nil, ErrMenuItemTitleRequired
 	}
@@ -66,6 +76,7 @@ func NewMenuItem(menuID int64, title, url string) (*MenuItem, error) {
 	now := time.Now()
 	return &MenuItem{
 		MenuID:    menuID,
+		ParentID:  parentID,
 		Title:     title,
 		URL:       url,
 		Target:    "_self",
@@ -74,6 +85,31 @@ func NewMenuItem(menuID int64, title, url string) (*MenuItem, error) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}, nil
+}
+
+// Update updates menu information
+func (m *Menu) Update(name, description, location string) error {
+	if name == "" {
+		return ErrMenuNameRequired
+	}
+	m.Name = name
+	m.Description = description
+	m.Location = location
+	m.UpdatedAt = time.Now()
+	return nil
+}
+
+// Update updates menu item information
+func (mi *MenuItem) Update(title, url, target, icon string) error {
+	if title == "" {
+		return ErrMenuItemTitleRequired
+	}
+	mi.Title = title
+	mi.URL = url
+	mi.Target = target
+	mi.Icon = icon
+	mi.UpdatedAt = time.Now()
+	return nil
 }
 
 // Activate activates the menu

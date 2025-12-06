@@ -29,70 +29,100 @@ type Rule struct {
 	Name        string
 	Description string
 	Type        RuleType
-	Status      RuleStatus
 	Priority    int
+	IsActive    bool
 	Conditions  []Condition
 	Actions     []Action
 	StartDate   *time.Time
 	EndDate     *time.Time
+	Context     map[string]interface{}
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
+// Operator represents a comparison operator
+type Operator string
+
+const (
+	OperatorEquals      Operator = "EQUALS"
+	OperatorNotEquals   Operator = "NOT_EQUALS"
+	OperatorGreaterThan Operator = "GREATER_THAN"
+	OperatorLessThan    Operator = "LESS_THAN"
+	OperatorContains    Operator = "CONTAINS"
+)
+
+// ActionType represents an action type
+type ActionType string
+
+const (
+	ActionTypeDiscount ActionType = "APPLY_DISCOUNT"
+	ActionTypeSetPrice ActionType = "SET_PRICE"
+	ActionTypeSendEmail ActionType = "SEND_EMAIL"
+)
+
 // Condition represents a rule condition
 type Condition struct {
-	ID         int64
-	RuleID     int64
-	Field      string // e.g., "order.total", "customer.type", "product.category"
-	Operator   string // e.g., "EQUALS", "GREATER_THAN", "CONTAINS"
-	Value      string
-	LogicOperator string // "AND", "OR"
-	SortOrder  int
+	Field    string   // e.g., "order.total", "customer.type"
+	Operator Operator // e.g., EQUALS, GREATER_THAN
+	Value    string
 }
 
 // Action represents a rule action
 type Action struct {
-	ID         int64
-	RuleID     int64
-	ActionType string // e.g., "APPLY_DISCOUNT", "SET_PRICE", "SEND_EMAIL"
+	Type       ActionType             // e.g., APPLY_DISCOUNT, SET_PRICE
 	Parameters map[string]interface{}
-	SortOrder  int
 }
 
 // NewRule creates a new rule
-func NewRule(name string, ruleType RuleType, priority int) (*Rule, error) {
+func NewRule(name, description string, ruleType RuleType, priority int, conditions []Condition, actions []Action) (*Rule, error) {
 	if name == "" {
 		return nil, ErrRuleNameRequired
 	}
 
 	now := time.Now()
 	return &Rule{
-		Name:       name,
-		Type:       ruleType,
-		Status:     RuleStatusActive,
-		Priority:   priority,
-		Conditions: make([]Condition, 0),
-		Actions:    make([]Action, 0),
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		Name:        name,
+		Description: description,
+		Type:        ruleType,
+		Priority:    priority,
+		IsActive:    true,
+		Conditions:  conditions,
+		Actions:     actions,
+		Context:     make(map[string]interface{}),
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}, nil
+}
+
+// Update updates rule information
+func (r *Rule) Update(name, description string, priority int, conditions []Condition, actions []Action) error {
+	if name == "" {
+		return ErrRuleNameRequired
+	}
+	r.Name = name
+	r.Description = description
+	r.Priority = priority
+	r.Conditions = conditions
+	r.Actions = actions
+	r.UpdatedAt = time.Now()
+	return nil
 }
 
 // Activate activates the rule
 func (r *Rule) Activate() {
-	r.Status = RuleStatusActive
+	r.IsActive = true
 	r.UpdatedAt = time.Now()
 }
 
 // Deactivate deactivates the rule
 func (r *Rule) Deactivate() {
-	r.Status = RuleStatusInactive
+	r.IsActive = false
 	r.UpdatedAt = time.Now()
 }
 
-// IsActive checks if the rule is currently active
-func (r *Rule) IsActive() bool {
-	if r.Status != RuleStatusActive {
+// IsActiveNow checks if the rule is currently active based on dates
+func (r *Rule) IsActiveNow() bool {
+	if !r.IsActive {
 		return false
 	}
 

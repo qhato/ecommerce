@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qhato/ecommerce/internal/checkout/application"
 	"github.com/qhato/ecommerce/internal/checkout/domain"
 )
 
 // CheckoutCommandHandler handles checkout-related commands
 type CheckoutCommandHandler struct {
-	sessionRepo       domain.CheckoutSessionRepository
+	sessionRepo        domain.CheckoutSessionRepository
 	shippingOptionRepo domain.ShippingOptionRepository
-	// Additional dependencies for integration
-	// orderService, pricingService, taxService, etc.
+	orchestrator       *application.CheckoutOrchestrator
 }
 
 // NewCheckoutCommandHandler creates a new command handler

@@ -25,60 +25,71 @@ const (
 
 // Content represents a CMS content item
 type Content struct {
-	ID             int64
-	Title          string
-	Slug           string
-	Type           ContentType
-	Status         ContentStatus
-	Body           string
-	MetaTitle      string
+	ID              int64
+	Title           string
+	Slug            string
+	Type            ContentType
+	Status          ContentStatus
+	Body            string
+	Excerpt         string
+	FeaturedImage   string
+	MetaTitle       string
 	MetaDescription string
-	MetaKeywords   string
-	Template       string
-	AuthorID       int64
-	PublishedAt    *time.Time
-	Version        int
-	ParentID       *int64
-	SortOrder      int
-	Locale         string
-	IsActive       bool
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	MetaKeywords    string
+	Template        string
+	AuthorID        int64
+	PublishedAt     *time.Time
+	ScheduledFor    *time.Time
+	ExpiresAt       *time.Time
+	Version         int
+	ParentID        *int64
+	SortOrder       int
+	ViewCount       int
+	Locale          string
+	IsActive        bool
+	CustomFields    map[string]interface{}
+	Children        []Content
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // NewContent creates a new content item
-func NewContent(title, slug string, contentType ContentType, authorID int64) (*Content, error) {
+func NewContent(title, slug string, contentType ContentType, body string, authorID int64, locale string) (*Content, error) {
 	if title == "" {
 		return nil, ErrContentTitleRequired
 	}
 	if slug == "" {
 		return nil, ErrContentSlugRequired
 	}
+	if locale == "" {
+		locale = "en"
+	}
 
 	now := time.Now()
 	return &Content{
-		Title:     title,
-		Slug:      slug,
-		Type:      contentType,
-		Status:    ContentStatusDraft,
-		AuthorID:  authorID,
-		Version:   1,
-		Locale:    "en_US",
-		IsActive:  true,
-		CreatedAt: now,
-		UpdatedAt: now,
+		Title:        title,
+		Slug:         slug,
+		Type:         contentType,
+		Status:       ContentStatusDraft,
+		Body:         body,
+		AuthorID:     authorID,
+		Version:      1,
+		Locale:       locale,
+		IsActive:     true,
+		CustomFields: make(map[string]interface{}),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}, nil
 }
 
 // Publish publishes the content
-func (c *Content) Publish() error {
+func (c *Content) Publish(publishedAt time.Time) error {
 	if c.Status == ContentStatusPublished {
 		return ErrContentAlreadyPublished
 	}
-	now := time.Now()
 	c.Status = ContentStatusPublished
-	c.PublishedAt = &now
-	c.UpdatedAt = now
+	c.PublishedAt = &publishedAt
+	c.UpdatedAt = time.Now()
 	return nil
 }
 
@@ -93,6 +104,21 @@ func (c *Content) Archive() {
 	c.Status = ContentStatusArchived
 	c.IsActive = false
 	c.UpdatedAt = time.Now()
+}
+
+// Update updates content fields
+func (c *Content) Update(title, slug, body string) error {
+	if title == "" {
+		return ErrContentTitleRequired
+	}
+	if slug == "" {
+		return ErrContentSlugRequired
+	}
+	c.Title = title
+	c.Slug = slug
+	c.Body = body
+	c.UpdatedAt = time.Now()
+	return nil
 }
 
 // UpdateContent updates content fields

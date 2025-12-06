@@ -226,6 +226,208 @@ func (g *PayPalGateway) GetTransaction(ctx context.Context, transactionID string
 	return nil, nil
 }
 
+// AuthorizeNetGateway implements PaymentGateway for Authorize.net
+type AuthorizeNetGateway struct {
+	config *GatewayConfig
+}
+
+// NewAuthorizeNetGateway creates a new Authorize.net gateway
+func NewAuthorizeNetGateway(config *GatewayConfig) *AuthorizeNetGateway {
+	return &AuthorizeNetGateway{config: config}
+}
+
+func (g *AuthorizeNetGateway) GetName() string {
+	return "Authorize.Net"
+}
+
+func (g *AuthorizeNetGateway) Authorize(ctx context.Context, request *PaymentRequest) (*PaymentResponse, error) {
+	// TODO: Implement Authorize.net API integration
+	return &PaymentResponse{
+		TransactionID: "authnet_auth_123",
+		Status:        PaymentStatusAuthorized,
+		Amount:        request.Amount,
+		Currency:      request.Currency,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *AuthorizeNetGateway) Capture(ctx context.Context, transactionID string, amount decimal.Decimal) (*PaymentResponse, error) {
+	// TODO: Implement Authorize.net capture
+	return &PaymentResponse{
+		TransactionID: transactionID,
+		Status:        PaymentStatusCaptured,
+		Amount:        amount,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *AuthorizeNetGateway) Sale(ctx context.Context, request *PaymentRequest) (*PaymentResponse, error) {
+	// TODO: Implement Authorize.net sale
+	return &PaymentResponse{
+		TransactionID: "authnet_sale_123",
+		Status:        PaymentStatusCompleted,
+		Amount:        request.Amount,
+		Currency:      request.Currency,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *AuthorizeNetGateway) Refund(ctx context.Context, transactionID string, amount decimal.Decimal) (*PaymentResponse, error) {
+	// TODO: Implement Authorize.net refund
+	return &PaymentResponse{
+		TransactionID: transactionID,
+		Status:        PaymentStatusRefunded,
+		Amount:        amount,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *AuthorizeNetGateway) Void(ctx context.Context, transactionID string) (*PaymentResponse, error) {
+	// TODO: Implement Authorize.net void
+	return &PaymentResponse{
+		TransactionID: transactionID,
+		Status:        PaymentStatusCancelled,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *AuthorizeNetGateway) GetTransaction(ctx context.Context, transactionID string) (*PaymentResponse, error) {
+	// TODO: Implement Authorize.net transaction retrieval
+	return nil, nil
+}
+
+// MockGateway implements PaymentGateway for testing
+type MockGateway struct {
+	config          *GatewayConfig
+	shouldFail      bool
+	failureMessage  string
+}
+
+// NewMockGateway creates a new mock gateway
+func NewMockGateway(config *GatewayConfig) *MockGateway {
+	return &MockGateway{config: config, shouldFail: false}
+}
+
+// SetShouldFail configures the mock to fail
+func (g *MockGateway) SetShouldFail(shouldFail bool, message string) {
+	g.shouldFail = shouldFail
+	g.failureMessage = message
+}
+
+func (g *MockGateway) GetName() string {
+	return "Mock"
+}
+
+func (g *MockGateway) Authorize(ctx context.Context, request *PaymentRequest) (*PaymentResponse, error) {
+	if g.shouldFail {
+		errMsg := g.failureMessage
+		return &PaymentResponse{
+			TransactionID: "mock_fail_" + request.OrderID,
+			Status:        PaymentStatusFailed,
+			Amount:        request.Amount,
+			Currency:      request.Currency,
+			ErrorMessage:  &errMsg,
+			ProcessedAt:   time.Now(),
+		}, NewDomainError(g.failureMessage)
+	}
+
+	return &PaymentResponse{
+		TransactionID: "mock_auth_" + request.OrderID,
+		Status:        PaymentStatusAuthorized,
+		Amount:        request.Amount,
+		Currency:      request.Currency,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *MockGateway) Capture(ctx context.Context, transactionID string, amount decimal.Decimal) (*PaymentResponse, error) {
+	if g.shouldFail {
+		errMsg := g.failureMessage
+		return &PaymentResponse{
+			TransactionID: transactionID,
+			Status:        PaymentStatusFailed,
+			Amount:        amount,
+			ErrorMessage:  &errMsg,
+			ProcessedAt:   time.Now(),
+		}, NewDomainError(g.failureMessage)
+	}
+
+	return &PaymentResponse{
+		TransactionID: transactionID,
+		Status:        PaymentStatusCaptured,
+		Amount:        amount,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *MockGateway) Sale(ctx context.Context, request *PaymentRequest) (*PaymentResponse, error) {
+	if g.shouldFail {
+		errMsg := g.failureMessage
+		return &PaymentResponse{
+			TransactionID: "mock_fail_" + request.OrderID,
+			Status:        PaymentStatusFailed,
+			Amount:        request.Amount,
+			Currency:      request.Currency,
+			ErrorMessage:  &errMsg,
+			ProcessedAt:   time.Now(),
+		}, NewDomainError(g.failureMessage)
+	}
+
+	return &PaymentResponse{
+		TransactionID: "mock_sale_" + request.OrderID,
+		Status:        PaymentStatusCompleted,
+		Amount:        request.Amount,
+		Currency:      request.Currency,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *MockGateway) Refund(ctx context.Context, transactionID string, amount decimal.Decimal) (*PaymentResponse, error) {
+	if g.shouldFail {
+		errMsg := g.failureMessage
+		return &PaymentResponse{
+			TransactionID: transactionID,
+			Status:        PaymentStatusFailed,
+			Amount:        amount,
+			ErrorMessage:  &errMsg,
+			ProcessedAt:   time.Now(),
+		}, NewDomainError(g.failureMessage)
+	}
+
+	return &PaymentResponse{
+		TransactionID: transactionID,
+		Status:        PaymentStatusRefunded,
+		Amount:        amount,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *MockGateway) Void(ctx context.Context, transactionID string) (*PaymentResponse, error) {
+	if g.shouldFail {
+		errMsg := g.failureMessage
+		return &PaymentResponse{
+			TransactionID: transactionID,
+			Status:        PaymentStatusFailed,
+			ErrorMessage:  &errMsg,
+			ProcessedAt:   time.Now(),
+		}, NewDomainError(g.failureMessage)
+	}
+
+	return &PaymentResponse{
+		TransactionID: transactionID,
+		Status:        PaymentStatusCancelled,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
+func (g *MockGateway) GetTransaction(ctx context.Context, transactionID string) (*PaymentResponse, error) {
+	return &PaymentResponse{
+		TransactionID: transactionID,
+		Status:        PaymentStatusCompleted,
+		ProcessedAt:   time.Now(),
+	}, nil
+}
+
 // PaymentGatewayService manages multiple payment gateways
 type PaymentGatewayService struct {
 	gateways map[string]PaymentGateway
@@ -250,6 +452,17 @@ func (s *PaymentGatewayService) RegisterGateway(gateway PaymentGateway) {
 func (s *PaymentGatewayService) GetGateway(name string) (PaymentGateway, bool) {
 	gateway, exists := s.gateways[name]
 	return gateway, exists
+}
+
+// GetAllGateways returns all registered gateways
+func (s *PaymentGatewayService) GetAllGateways() []PaymentGateway {
+	gateways := make([]PaymentGateway, 0, len(s.priority))
+	for _, name := range s.priority {
+		if gateway, exists := s.gateways[name]; exists {
+			gateways = append(gateways, gateway)
+		}
+	}
+	return gateways
 }
 
 // ProcessPayment processes a payment using the specified gateway

@@ -11,49 +11,54 @@ import (
 // InventoryRepository implements domain.InventoryRepository for in-memory persistence.
 type InventoryRepository struct {
 	mu          sync.RWMutex
-	inventories map[int64]*domain.SkuInventory
-	nextID      int64
+	inventories map[string]*domain.InventoryLevel
 	// A map to quickly find inventory by SKU ID
-	skuIDIndex map[int64]int64
+	skuIDIndex     map[string]string
+	warehouseIndex map[string][]string
 }
 
 // NewInventoryRepository creates a new in-memory inventory repository.
 func NewInventoryRepository() *InventoryRepository {
 	return &InventoryRepository{
-		inventories: make(map[int64]*domain.SkuInventory),
-		nextID:      1,
-		skuIDIndex:  make(map[int64]int64),
+		inventories:    make(map[string]*domain.InventoryLevel),
+		skuIDIndex:     make(map[string]string),
+		warehouseIndex: make(map[string][]string),
 	}
 }
 
-// Save stores a new SkuInventory record or updates an existing one.
-func (r *InventoryRepository) Save(ctx context.Context, inventory *domain.SkuInventory) error {
+// Save stores a new InventoryLevel record or updates an existing one.
+func (r *InventoryRepository) Save(ctx context.Context, level *domain.InventoryLevel) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if inventory.ID == 0 {
-		inventory.ID = r.nextID
-		r.nextID++
+	r.inventories[level.ID] = level
+	r.skuIDIndex[level.SKUID] = level.ID
+
+	if level.WarehouseID != nil {
+		warehouseID := *level.WarehouseID
+		if _, exists := r.warehouseIndex[warehouseID]; !exists {
+			r.warehouseIndex[warehouseID] = []string{}
+		}
+		r.warehouseIndex[warehouseID] = append(r.warehouseIndex[warehouseID], level.ID)
 	}
-	r.inventories[inventory.ID] = inventory
-	r.skuIDIndex[inventory.SKUID] = inventory.ID
+
 	return nil
 }
 
-// FindByID retrieves a SkuInventory record by its unique identifier.
-func (r *InventoryRepository) FindByID(ctx context.Context, id int64) (*domain.SkuInventory, error) {
+// FindByID retrieves an InventoryLevel record by its unique identifier.
+func (r *InventoryRepository) FindByID(ctx context.Context, id string) (*domain.InventoryLevel, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	inventory, ok := r.inventories[id]
+	level, ok := r.inventories[id]
 	if !ok {
 		return nil, nil
 	}
-	return inventory, nil
+	return level, nil
 }
 
-// FindBySKUID retrieves a SkuInventory record by its associated SKU ID.
-func (r *InventoryRepository) FindBySKUID(ctx context.Context, skuID int64) (*domain.SkuInventory, error) {
+// FindBySKUID retrieves an InventoryLevel record by its associated SKU ID.
+func (r *InventoryRepository) FindBySKUID(ctx context.Context, skuID string) (*domain.InventoryLevel, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -64,30 +69,49 @@ func (r *InventoryRepository) FindBySKUID(ctx context.Context, skuID int64) (*do
 	return r.inventories[id], nil
 }
 
-// FindByFulfillmentLocation retrieves SkuInventory records by fulfillment location.
-func (r *InventoryRepository) FindByFulfillmentLocation(ctx context.Context, location string) ([]*domain.SkuInventory, error) {
+// FindByWarehouse retrieves InventoryLevel records by warehouse.
+func (r *InventoryRepository) FindByWarehouse(ctx context.Context, warehouseID string) ([]*domain.InventoryLevel, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	var result []*domain.SkuInventory
-	for _, inventory := range r.inventories {
-		if inventory.FulfillmentLocation == location {
-			result = append(result, inventory)
+	ids, ok := r.warehouseIndex[warehouseID]
+	if !ok {
+		return []*domain.InventoryLevel{}, nil
+	}
+
+	var result []*domain.InventoryLevel
+	for _, id := range ids {
+		if level, exists := r.inventories[id]; exists {
+			result = append(result, level)
 		}
 	}
 	return result, nil
 }
 
-// Delete removes a SkuInventory record by its unique identifier.
-func (r *InventoryRepository) Delete(ctx context.Context, id int64) error {
+// Delete removes an InventoryLevel record by its unique identifier.
+func (r *InventoryRepository) Delete(ctx context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	inventory, ok := r.inventories[id]
+	level, ok := r.inventories[id]
 	if !ok {
-		return fmt.Errorf("SKU inventory with ID %d not found", id)
+		return fmt.Errorf("inventory level with ID %s not found", id)
 	}
 	delete(r.inventories, id)
-	delete(r.skuIDIndex, inventory.SKUID)
+	delete(r.skuIDIndex, level.SKUID)
+
+	if level.WarehouseID != nil {
+		warehouseID := *level.WarehouseID
+		if ids, exists := r.warehouseIndex[warehouseID]; exists {
+			filtered := make([]string, 0)
+			for _, wID := range ids {
+				if wID != id {
+					filtered = append(filtered, wID)
+				}
+			}
+			r.warehouseIndex[warehouseID] = filtered
+		}
+	}
+
 	return nil
 }
