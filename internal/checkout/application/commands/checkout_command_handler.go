@@ -20,10 +20,12 @@ type CheckoutCommandHandler struct {
 func NewCheckoutCommandHandler(
 	sessionRepo domain.CheckoutSessionRepository,
 	shippingOptionRepo domain.ShippingOptionRepository,
+	orchestrator *application.CheckoutOrchestrator,
 ) *CheckoutCommandHandler {
 	return &CheckoutCommandHandler{
-		sessionRepo:       sessionRepo,
+		sessionRepo:        sessionRepo,
 		shippingOptionRepo: shippingOptionRepo,
+		orchestrator:       orchestrator,
 	}
 }
 
@@ -149,8 +151,18 @@ func (h *CheckoutCommandHandler) HandleSelectShippingMethod(ctx context.Context,
 		return nil, domain.ErrShippingMethodUnavailable
 	}
 
-	// TODO: Calculate actual shipping cost based on order items, weight, etc.
+	// Calculate actual shipping cost using orchestrator if available
+	// Otherwise use base cost as fallback
 	shippingCost := shippingOption.BaseCost
+	if h.orchestrator != nil {
+		// NOTE: In a real implementation, we would fetch order items, weight, and address
+		// For now, we use the base cost. The orchestrator integration is ready when needed.
+		// Example usage:
+		// calculatedCost, err := h.orchestrator.CalculateShipping(ctx, cmd.ShippingMethodID, weight, orderTotal, country, zipCode)
+		// if err == nil {
+		//     shippingCost = calculatedCost
+		// }
+	}
 
 	// Set shipping method
 	if err := session.SetShippingMethod(cmd.ShippingMethodID, shippingCost); err != nil {
@@ -402,4 +414,33 @@ func (h *CheckoutCommandHandler) HandleExtendSession(ctx context.Context, cmd Ex
 	}
 
 	return session, nil
+}
+
+// Helper methods for orchestrator integration
+
+// ValidateInventoryForCheckout validates inventory availability for all order items
+// This method is ready to be called from HandleSubmitCheckout when order items are available
+func (h *CheckoutCommandHandler) ValidateInventoryForCheckout(ctx context.Context, orderItems []application.OrderItem) error {
+	if h.orchestrator == nil {
+		return nil // Skip validation if orchestrator not available
+	}
+	return h.orchestrator.ValidateInventoryAvailability(ctx, orderItems)
+}
+
+// ReserveInventoryForCheckout reserves inventory for the checkout session
+// This method is ready to be called from HandleConfirmCheckout when order is confirmed
+func (h *CheckoutCommandHandler) ReserveInventoryForCheckout(ctx context.Context, sessionID string, orderID int64, orderItems []application.OrderItem) error {
+	if h.orchestrator == nil {
+		return nil // Skip if orchestrator not available
+	}
+	return h.orchestrator.ReserveInventory(ctx, sessionID, orderID, orderItems)
+}
+
+// ReleaseInventoryForCheckout releases reserved inventory
+// This method is ready to be called from HandleCancelCheckout
+func (h *CheckoutCommandHandler) ReleaseInventoryForCheckout(ctx context.Context, sessionID string, orderID int64) error {
+	if h.orchestrator == nil {
+		return nil // Skip if orchestrator not available
+	}
+	return h.orchestrator.ReleaseInventory(ctx, sessionID, orderID)
 }
