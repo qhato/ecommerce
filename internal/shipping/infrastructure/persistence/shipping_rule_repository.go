@@ -2,17 +2,17 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 
 	"github.com/qhato/ecommerce/internal/shipping/domain"
+	"github.com/qhato/ecommerce/pkg/database"
 )
 
 type PostgresShippingRuleRepository struct {
-	db *sql.DB
+	db *database.DB
 }
 
-func NewPostgresShippingRuleRepository(db *sql.DB) *PostgresShippingRuleRepository {
+func NewPostgresShippingRuleRepository(db *database.DB) *PostgresShippingRuleRepository {
 	return &PostgresShippingRuleRepository{db: db}
 }
 
@@ -25,7 +25,7 @@ func (r *PostgresShippingRuleRepository) Create(ctx context.Context, rule *domai
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
 		RETURNING id`
 
-	return r.db.QueryRowContext(ctx, query,
+	return r.db.QueryRow(ctx, query,
 		rule.Name, rule.Description, rule.RuleType, rule.IsEnabled, rule.Priority,
 		rule.MinOrderValue, countriesJSON, excludedZipsJSON,
 		rule.DiscountType, rule.DiscountValue, rule.CreatedAt, rule.UpdatedAt,
@@ -42,17 +42,15 @@ func (r *PostgresShippingRuleRepository) Update(ctx context.Context, rule *domai
 		discount_type = $9, discount_value = $10, updated_at = $11
 		WHERE id = $12`
 
-	_, err := r.db.ExecContext(ctx, query,
+	return r.db.Exec(ctx, query,
 		rule.Name, rule.Description, rule.RuleType, rule.IsEnabled, rule.Priority,
 		rule.MinOrderValue, countriesJSON, excludedZipsJSON,
 		rule.DiscountType, rule.DiscountValue, rule.UpdatedAt, rule.ID,
 	)
-	return err
 }
 
 func (r *PostgresShippingRuleRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM blc_shipping_rule WHERE id = $1`, id)
-	return err
+	return r.db.Exec(ctx, `DELETE FROM blc_shipping_rule WHERE id = $1`, id)
 }
 
 func (r *PostgresShippingRuleRepository) FindByID(ctx context.Context, id int64) (*domain.ShippingRule, error) {
@@ -62,14 +60,11 @@ func (r *PostgresShippingRuleRepository) FindByID(ctx context.Context, id int64)
 	query := `SELECT id, name, description, rule_type, is_enabled, priority, min_order_value, countries, excluded_zips, discount_type, discount_value, created_at, updated_at 
 		FROM blc_shipping_rule WHERE id = $1`
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRow(ctx, query, id).Scan(
 		&rule.ID, &rule.Name, &rule.Description, &rule.RuleType, &rule.IsEnabled,
 		&rule.Priority, &rule.MinOrderValue, &countriesJSON, &excludedZipsJSON,
 		&rule.DiscountType, &rule.DiscountValue, &rule.CreatedAt, &rule.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +83,7 @@ func (r *PostgresShippingRuleRepository) FindAllEnabled(ctx context.Context) ([]
 	query := `SELECT id, name, description, rule_type, is_enabled, priority, min_order_value, countries, excluded_zips, discount_type, discount_value, created_at, updated_at 
 		FROM blc_shipping_rule WHERE is_enabled = true ORDER BY priority DESC, name`
 
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}

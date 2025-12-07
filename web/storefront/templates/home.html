@@ -1,0 +1,100 @@
+{{define "content"}}
+<!-- Hero Banner -->
+<section class="hero-banner">
+    <div class="container">
+        <div class="hero-content">
+            <h1>{{.HeroTitle}}</h1>
+            <p>{{.HeroSubtitle}}</p>
+            <a href="/shop" class="btn btn-primary btn-lg">Shop Now</a>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Categories -->
+<section class="featured-categories py-5">
+    <div class="container">
+        <h2 class="section-title text-center mb-4">Shop by Category</h2>
+        <div class="row">
+            {{range .FeaturedCategories}}
+            <div class="col-md-4 mb-3">
+                <div class="category-card">
+                    <a href="/category/{{.URL}}">
+                        <img src="{{.ImageURL}}" alt="{{.Name}}" class="category-image">
+                        <div class="category-overlay">
+                            <h3>{{.Name}}</h3>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+<section class="featured-products py-5 bg-light">
+    <div class="container">
+        <h2 class="section-title text-center mb-4">Featured Products</h2>
+        <div class="row">
+            {{range .FeaturedProducts}}
+            <div class="col-md-3 mb-4">
+                {{template "partials/product-card.html" .}}
+            </div>
+            {{end}}
+        </div>
+        <div class="text-center mt-4">
+            <a href="/shop" class="btn btn-outline-primary">View All Products</a>
+        </div>
+    </div>
+</section>
+
+<!-- New Arrivals -->
+<section class="new-arrivals py-5">
+    <div class="container">
+        <h2 class="section-title text-center mb-4">New Arrivals</h2>
+        <div class="row">
+            {{range .NewArrivals}}
+            <div class="col-md-3 mb-4">
+                {{template "partials/product-card.html" .}}
+            </div>
+            {{end}}
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="features py-5 bg-light">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="feature-item">
+                    <i class="fa fa-truck fa-3x mb-3"></i>
+                    <h4>Free Shipping</h4>
+                    <p>On orders over $50</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="feature-item">
+                    <i class="fa fa-refresh fa-3x mb-3"></i>
+                    <h4>Easy Returns</h4>
+                    <p>30-day return policy</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="feature-item">
+                    <i class="fa fa-lock fa-3x mb-3"></i>
+                    <h4>Secure Payment</h4>
+                    <p>SSL encrypted checkout</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="feature-item">
+                    <i class="fa fa-headphones fa-3x mb-3"></i>
+                    <h4>24/7 Support</h4>
+                    <p>Always here to help</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{{end}}

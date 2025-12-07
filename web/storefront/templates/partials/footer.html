@@ -1,0 +1,75 @@
+{{define "partials/footer.html"}}
+<footer class="site-footer">
+    <div class="footer-top">
+        <div class="container">
+            <div class="row">
+                <!-- About -->
+                <div class="col-md-3">
+                    <h4>About Us</h4>
+                    <p>{{.SiteDescription}}</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fa fa-facebook"></i></a>
+                        <a href="#"><i class="fa fa-twitter"></i></a>
+                        <a href="#"><i class="fa fa-instagram"></i></a>
+                        <a href="#"><i class="fa fa-linkedin"></i></a>
+                    </div>
+                </div>
+
+                <!-- Customer Service -->
+                <div class="col-md-3">
+                    <h4>Customer Service</h4>
+                    <ul class="footer-links">
+                        <li><a href="/help">Help Center</a></li>
+                        <li><a href="/shipping">Shipping Info</a></li>
+                        <li><a href="/returns">Returns</a></li>
+                        <li><a href="/track-order">Track Order</a></li>
+                        <li><a href="/contact">Contact Us</a></li>
+                    </ul>
+                </div>
+
+                <!-- My Account -->
+                <div class="col-md-3">
+                    <h4>My Account</h4>
+                    <ul class="footer-links">
+                        {{if .User}}
+                        <li><a href="/account">My Account</a></li>
+                        <li><a href="/account/orders">Order History</a></li>
+                        <li><a href="/account/wishlist">Wishlist</a></li>
+                        <li><a href="/account/addresses">Addresses</a></li>
+                        {{else}}
+                        <li><a href="/login">Login</a></li>
+                        <li><a href="/register">Create Account</a></li>
+                        {{end}}
+                    </ul>
+                </div>
+
+                <!-- Newsletter -->
+                <div class="col-md-3">
+                    <h4>Newsletter</h4>
+                    <p>Subscribe to receive updates, access to exclusive deals, and more.</p>
+                    <form action="/newsletter/subscribe" method="post" class="newsletter-form">
+                        <div class="input-group">
+                            <input type="email" class="form-control" name="email" placeholder="Your email" required>
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fa fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <div class="container">
+            <div class="footer-bottom-content">
+                <p>&copy; {{.Year}} {{.SiteName}}. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="/privacy">Privacy Policy</a>
+                    <a href="/terms">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+{{end}}

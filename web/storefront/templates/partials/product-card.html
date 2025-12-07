@@ -1,0 +1,54 @@
+{{define "partials/product-card.html"}}
+<div class="product-card">
+    <a href="/product/{{.URL}}" class="product-link">
+        <!-- Product Image -->
+        <div class="product-image">
+            <img src="{{.ImageURL}}" alt="{{.Name}}" class="img-fluid">
+            {{if .IsOnSale}}
+            <span class="badge badge-sale">Sale</span>
+            {{end}}
+            {{if .IsNew}}
+            <span class="badge badge-new">New</span>
+            {{end}}
+        </div>
+
+        <!-- Product Info -->
+        <div class="product-info">
+            <h5 class="product-name">{{.Name}}</h5>
+
+            <!-- Rating -->
+            {{if .Rating}}
+            <div class="product-rating">
+                {{range $i := iterate .Rating}}
+                <i class="fa fa-star"></i>
+                {{end}}
+                {{range $i := iterate (subtract 5 .Rating)}}
+                <i class="fa fa-star-o"></i>
+                {{end}}
+                <span class="rating-count">({{.ReviewCount}})</span>
+            </div>
+            {{end}}
+
+            <!-- Price -->
+            <div class="product-price">
+                {{if .SalePrice}}
+                <span class="price-original">${{printf "%.2f" .RetailPrice}}</span>
+                <span class="price-sale">${{printf "%.2f" .SalePrice}}</span>
+                {{else}}
+                <span class="price">${{printf "%.2f" .RetailPrice}}</span>
+                {{end}}
+            </div>
+        </div>
+    </a>
+
+    <!-- Quick Actions -->
+    <div class="product-actions">
+        <button class="btn btn-primary btn-sm add-to-cart" data-product-id="{{.ID}}">
+            <i class="fa fa-shopping-cart"></i> Add to Cart
+        </button>
+        <button class="btn btn-outline-secondary btn-sm add-to-wishlist" data-product-id="{{.ID}}">
+            <i class="fa fa-heart-o"></i>
+        </button>
+    </div>
+</div>
+{{end}}

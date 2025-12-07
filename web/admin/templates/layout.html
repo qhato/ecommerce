@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+{{template "partials/head.html" .}}
+<body>
+    <div class="app-content">
+        <!-- Side Navigation -->
+        <div class="side-nav">
+            {{template "partials/nav.html" .}}
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <!-- Header -->
+            {{template "partials/header.html" .}}
+
+            <!-- Page Content -->
+            <div class="section-content">
+                {{template "content" .}}
+            </div>
+        </div>
+
+        <!-- Footer -->
+        {{template "partials/footer.html" .}}
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/admin/js/admin.js"></script>
+    {{block "scripts" .}}{{end}}
+</body>
+</html>

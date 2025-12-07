@@ -2,17 +2,17 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 
 	"github.com/qhato/ecommerce/internal/shipping/domain"
+	"github.com/qhato/ecommerce/pkg/database"
 )
 
 type PostgresCarrierConfigRepository struct {
-	db *sql.DB
+	db *database.DB
 }
 
-func NewPostgresCarrierConfigRepository(db *sql.DB) *PostgresCarrierConfigRepository {
+func NewPostgresCarrierConfigRepository(db *database.DB) *PostgresCarrierConfigRepository {
 	return &PostgresCarrierConfigRepository{db: db}
 }
 
@@ -22,12 +22,12 @@ func (r *PostgresCarrierConfigRepository) Create(ctx context.Context, config *do
 		return err
 	}
 
-	query := `INSERT INTO blc_carrier_config 
+	query := `INSERT INTO blc_carrier_config
 		(carrier, name, is_enabled, priority, api_key, api_secret, account_id, config, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id`
 
-	return r.db.QueryRowContext(ctx, query,
+	return r.db.QueryRow(ctx, query,
 		config.Carrier, config.Name, config.IsEnabled, config.Priority,
 		config.APIKey, config.APISecret, config.AccountID, configJSON,
 		config.CreatedAt, config.UpdatedAt,
@@ -40,33 +40,29 @@ func (r *PostgresCarrierConfigRepository) Update(ctx context.Context, config *do
 		return err
 	}
 
-	query := `UPDATE blc_carrier_config SET 
-		name = $1, is_enabled = $2, priority = $3, api_key = $4, 
+	query := `UPDATE blc_carrier_config SET
+		name = $1, is_enabled = $2, priority = $3, api_key = $4,
 		api_secret = $5, account_id = $6, config = $7, updated_at = $8
 		WHERE id = $9`
 
-	_, err = r.db.ExecContext(ctx, query,
+	return r.db.Exec(ctx, query,
 		config.Name, config.IsEnabled, config.Priority, config.APIKey,
 		config.APISecret, config.AccountID, configJSON, config.UpdatedAt, config.ID,
 	)
-	return err
 }
 
 func (r *PostgresCarrierConfigRepository) FindByID(ctx context.Context, id int64) (*domain.CarrierConfig, error) {
 	config := &domain.CarrierConfig{}
 	var configJSON []byte
 
-	query := `SELECT id, carrier, name, is_enabled, priority, api_key, api_secret, account_id, config, created_at, updated_at 
+	query := `SELECT id, carrier, name, is_enabled, priority, api_key, api_secret, account_id, config, created_at, updated_at
 		FROM blc_carrier_config WHERE id = $1`
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRow(ctx, query, id).Scan(
 		&config.ID, &config.Carrier, &config.Name, &config.IsEnabled, &config.Priority,
 		&config.APIKey, &config.APISecret, &config.AccountID, &configJSON,
 		&config.CreatedAt, &config.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -82,17 +78,14 @@ func (r *PostgresCarrierConfigRepository) FindByCarrier(ctx context.Context, car
 	config := &domain.CarrierConfig{}
 	var configJSON []byte
 
-	query := `SELECT id, carrier, name, is_enabled, priority, api_key, api_secret, account_id, config, created_at, updated_at 
+	query := `SELECT id, carrier, name, is_enabled, priority, api_key, api_secret, account_id, config, created_at, updated_at
 		FROM blc_carrier_config WHERE carrier = $1`
 
-	err := r.db.QueryRowContext(ctx, query, carrier).Scan(
+	err := r.db.QueryRow(ctx, query, carrier).Scan(
 		&config.ID, &config.Carrier, &config.Name, &config.IsEnabled, &config.Priority,
 		&config.APIKey, &config.APISecret, &config.AccountID, &configJSON,
 		&config.CreatedAt, &config.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -105,15 +98,15 @@ func (r *PostgresCarrierConfigRepository) FindByCarrier(ctx context.Context, car
 }
 
 func (r *PostgresCarrierConfigRepository) FindAll(ctx context.Context, enabledOnly bool) ([]*domain.CarrierConfig, error) {
-	query := `SELECT id, carrier, name, is_enabled, priority, api_key, api_secret, account_id, config, created_at, updated_at 
+	query := `SELECT id, carrier, name, is_enabled, priority, api_key, api_secret, account_id, config, created_at, updated_at
 		FROM blc_carrier_config`
-	
+
 	if enabledOnly {
 		query += " WHERE is_enabled = true"
 	}
 	query += " ORDER BY priority DESC, name ASC"
 
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}

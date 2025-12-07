@@ -2,16 +2,17 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/qhato/ecommerce/internal/shipping/domain"
+	"github.com/qhato/ecommerce/pkg/database"
 )
 
 type PostgresShippingMethodRepository struct {
-	db *sql.DB
+	db *database.DB
 }
 
-func NewPostgresShippingMethodRepository(db *sql.DB) *PostgresShippingMethodRepository {
+func NewPostgresShippingMethodRepository(db *database.DB) *PostgresShippingMethodRepository {
 	return &PostgresShippingMethodRepository{db: db}
 }
 
@@ -21,7 +22,7 @@ func (r *PostgresShippingMethodRepository) Create(ctx context.Context, method *d
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
 		RETURNING id`
 
-	return r.db.QueryRowContext(ctx, query,
+	return r.db.QueryRow(ctx, query,
 		method.Carrier, method.Name, method.Description, method.ServiceCode,
 		method.EstimatedDays, method.PricingType, method.FlatRate,
 		method.IsEnabled, method.CreatedAt, method.UpdatedAt,
@@ -34,16 +35,14 @@ func (r *PostgresShippingMethodRepository) Update(ctx context.Context, method *d
 		pricing_type = $5, flat_rate = $6, is_enabled = $7, updated_at = $8
 		WHERE id = $9`
 
-	_, err := r.db.ExecContext(ctx, query,
+	return r.db.Exec(ctx, query,
 		method.Name, method.Description, method.ServiceCode, method.EstimatedDays,
 		method.PricingType, method.FlatRate, method.IsEnabled, method.UpdatedAt, method.ID,
 	)
-	return err
 }
 
 func (r *PostgresShippingMethodRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM blc_shipping_method WHERE id = $1`, id)
-	return err
+	return r.db.Exec(ctx, `DELETE FROM blc_shipping_method WHERE id = $1`, id)
 }
 
 func (r *PostgresShippingMethodRepository) FindByID(ctx context.Context, id int64) (*domain.ShippingMethod, error) {
@@ -52,14 +51,11 @@ func (r *PostgresShippingMethodRepository) FindByID(ctx context.Context, id int6
 	query := `SELECT id, carrier, name, description, service_code, estimated_days, pricing_type, flat_rate, is_enabled, created_at, updated_at 
 		FROM blc_shipping_method WHERE id = $1`
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRow(ctx, query, id).Scan(
 		&method.ID, &method.Carrier, &method.Name, &method.Description,
 		&method.ServiceCode, &method.EstimatedDays, &method.PricingType,
 		&method.FlatRate, &method.IsEnabled, &method.CreatedAt, &method.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +74,7 @@ func (r *PostgresShippingMethodRepository) FindByCarrier(ctx context.Context, ca
 	query := `SELECT id, carrier, name, description, service_code, estimated_days, pricing_type, flat_rate, is_enabled, created_at, updated_at 
 		FROM blc_shipping_method WHERE carrier = $1 ORDER BY name`
 
-	rows, err := r.db.QueryContext(ctx, query, carrier)
+	rows, err := r.db.Query(ctx, query, carrier)
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +84,10 @@ func (r *PostgresShippingMethodRepository) FindByCarrier(ctx context.Context, ca
 }
 
 func (r *PostgresShippingMethodRepository) FindAllEnabled(ctx context.Context) ([]*domain.ShippingMethod, error) {
-	query := `SELECT id, carrier, name, description, service_code, estimated_days, pricing_type, flat_rate, is_enabled, created_at, updated_at 
+	query := `SELECT id, carrier, name, description, service_code, estimated_days, pricing_type, flat_rate, is_enabled, created_at, updated_at
 		FROM blc_shipping_method WHERE is_enabled = true ORDER BY carrier, name`
 
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +96,7 @@ func (r *PostgresShippingMethodRepository) FindAllEnabled(ctx context.Context) (
 	return r.scanMethods(ctx, rows)
 }
 
-func (r *PostgresShippingMethodRepository) scanMethods(ctx context.Context, rows *sql.Rows) ([]*domain.ShippingMethod, error) {
+func (r *PostgresShippingMethodRepository) scanMethods(ctx context.Context, rows pgx.Rows) ([]*domain.ShippingMethod, error) {
 	var methods []*domain.ShippingMethod
 
 	for rows.Next() {
@@ -130,7 +126,7 @@ func (r *PostgresShippingMethodRepository) loadBands(ctx context.Context, method
 	query := `SELECT id, method_id, band_type, min_value, max_value, price, percent_charge, created_at 
 		FROM blc_shipping_band WHERE method_id = $1 ORDER BY min_value`
 
-	rows, err := r.db.QueryContext(ctx, query, methodID)
+	rows, err := r.db.Query(ctx, query, methodID)
 	if err != nil {
 		return nil, err
 	}

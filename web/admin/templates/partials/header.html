@@ -1,0 +1,53 @@
+{{define "partials/header.html"}}
+<header class="admin-header">
+    <div class="header-container">
+        <div class="header-left">
+            <button class="btn btn-link sidebar-toggle" id="sidebarToggle">
+                <i class="fa fa-bars"></i>
+            </button>
+            <h1 class="header-title">{{.SectionTitle}}</h1>
+        </div>
+
+        <div class="header-right">
+            <!-- Search -->
+            <div class="header-search">
+                <form action="/admin/search" method="get">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="q" placeholder="Search..." value="{{.SearchQuery}}">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- User Menu -->
+            <div class="dropdown header-user-menu">
+                <button class="btn btn-link dropdown-toggle" type="button" id="userMenuButton" data-bs-toggle="dropdown">
+                    <i class="fa fa-user-circle"></i>
+                    <span>{{.User.Name}}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
+                    <li><a class="dropdown-item" href="/admin/profile"><i class="fa fa-user"></i> Profile</a></li>
+                    <li><a class="dropdown-item" href="/admin/settings"><i class="fa fa-cog"></i> Settings</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/admin/logout"><i class="fa fa-sign-out"></i> Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breadcrumbs -->
+    {{if .Breadcrumbs}}
+    <nav aria-label="breadcrumb" class="header-breadcrumb">
+        <ol class="breadcrumb">
+            {{range .Breadcrumbs}}
+            <li class="breadcrumb-item{{if .Active}} active{{end}}">
+                {{if .URL}}<a href="{{.URL}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}
+            </li>
+            {{end}}
+        </ol>
+    </nav>
+    {{end}}
+</header>
+{{end}}

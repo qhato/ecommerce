@@ -54,11 +54,36 @@ import (
 	fulfillmentPersistence "github.com/qhato/ecommerce/internal/fulfillment/infrastructure/persistence"
 	fulfillmentHttp "github.com/qhato/ecommerce/internal/fulfillment/ports/http"
 
+	// Shipping (Phase 1)
+	shippingCommands "github.com/qhato/ecommerce/internal/shipping/application/commands"
+	shippingQueries "github.com/qhato/ecommerce/internal/shipping/application/queries"
+	shippingPersistence "github.com/qhato/ecommerce/internal/shipping/infrastructure/persistence"
+	shippingHttp "github.com/qhato/ecommerce/internal/shipping/ports/http"
+
+	// Inventory (Phase 1) - Commands and Queries
+	inventoryCommands "github.com/qhato/ecommerce/internal/inventory/application/commands"
+	inventoryQueries "github.com/qhato/ecommerce/internal/inventory/application/queries"
+	inventoryHttp "github.com/qhato/ecommerce/internal/inventory/ports/http"
+
+	// Tax (Phase 1)
+	taxCommands "github.com/qhato/ecommerce/internal/tax/application/commands"
+	taxQueries "github.com/qhato/ecommerce/internal/tax/application/queries"
+	taxPersistence "github.com/qhato/ecommerce/internal/tax/infrastructure/persistence"
+	taxHttp "github.com/qhato/ecommerce/internal/tax/ports/http"
+
+	// Checkout (Phase 1)
+	checkoutApp "github.com/qhato/ecommerce/internal/checkout/application"
+	checkoutCommands "github.com/qhato/ecommerce/internal/checkout/application/commands"
+	checkoutQueries "github.com/qhato/ecommerce/internal/checkout/application/queries"
+	checkoutPersistence "github.com/qhato/ecommerce/internal/checkout/infrastructure/persistence"
+	checkoutHttp "github.com/qhato/ecommerce/internal/checkout/ports/http"
+
 	"github.com/qhato/ecommerce/pkg/cache"
 	"github.com/qhato/ecommerce/pkg/database"
 	"github.com/qhato/ecommerce/pkg/event"
 	"github.com/qhato/ecommerce/pkg/logger"
 	"github.com/qhato/ecommerce/pkg/middleware"
+	"github.com/qhato/ecommerce/pkg/renderer"
 	"github.com/qhato/ecommerce/pkg/validator"
 )
 
@@ -123,6 +148,13 @@ func main() {
 
 	// Initialize validator
 	val := validator.New()
+
+	// Initialize template renderer
+	tmplRenderer, err := renderer.NewTemplateRenderer("web", log)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to initialize template renderer")
+	}
+	log.Info("Template renderer initialized")
 
 	// ========== CATALOG BOUNDED CONTEXT ========== 
 
@@ -271,6 +303,94 @@ func main() {
 	// Fulfillment HTTP handlers
 	adminShipmentHandler := fulfillmentHttp.NewAdminShipmentHandler(shipmentCommandHandler, shipmentRepo, val, log)
 
+	// ========== SHIPPING BOUNDED CONTEXT (PHASE 1) ==========
+
+	// Shipping repositories
+	carrierConfigRepo := shippingPersistence.NewPostgresCarrierConfigRepository(db)
+	shippingMethodRepo := shippingPersistence.NewPostgresShippingMethodRepository(db)
+	shippingBandRepo := shippingPersistence.NewPostgresShippingBandRepository(db)
+	shippingRuleRepo := shippingPersistence.NewPostgresShippingRuleRepository(db)
+
+	// Shipping command handler
+	shippingCommandHandler := shippingCommands.NewShippingCommandHandler(
+		carrierConfigRepo,
+		shippingMethodRepo,
+		shippingBandRepo,
+		shippingRuleRepo,
+	)
+
+	// Shipping query service
+	shippingQueryService := shippingQueries.NewShippingQueryService(
+		carrierConfigRepo,
+		shippingMethodRepo,
+		shippingBandRepo,
+		shippingRuleRepo,
+	)
+
+	// Shipping HTTP handler
+	adminShippingHandler := shippingHttp.NewAdminShippingHandler(shippingCommandHandler, shippingQueryService, val, log)
+
+	// ========== INVENTORY BOUNDED CONTEXT (PHASE 1) ==========
+
+	// Inventory repositories (already initialized above, but adding missing reservation repo)
+	inventoryReservationRepo := inventoryPersistence.NewPostgresInventoryReservationRepository(db)
+
+	// Inventory command handler
+	inventoryCommandHandler := inventoryCommands.NewInventoryCommandHandler(inventoryLevelRepo, inventoryReservationRepo)
+
+	// Inventory query service
+	inventoryQueryService := inventoryQueries.NewInventoryQueryService(inventoryLevelRepo, inventoryReservationRepo)
+
+	// Inventory HTTP handler
+	adminInventoryHandler := inventoryHttp.NewAdminInventoryHandler(inventoryCommandHandler, inventoryQueryService, val, log)
+
+	// ========== TAX BOUNDED CONTEXT (PHASE 1) ==========
+
+	// Tax repositories
+	taxJurisdictionRepo := taxPersistence.NewPostgresTaxJurisdictionRepository(db)
+	taxRateRepo := taxPersistence.NewPostgresTaxRateRepository(db)
+	taxExemptionRepo := taxPersistence.NewPostgresTaxExemptionRepository(db)
+
+	// Tax command handler
+	taxCommandHandler := taxCommands.NewTaxCommandHandler(taxJurisdictionRepo, taxRateRepo, taxExemptionRepo)
+
+	// Tax calculator service (query service)
+	taxCalculatorService := taxQueries.NewTaxCalculatorService(taxJurisdictionRepo, taxRateRepo, taxExemptionRepo)
+
+	// Tax HTTP handler
+	adminTaxHandler := taxHttp.NewTaxHandler(taxCommandHandler, taxCalculatorService)
+
+	// ========== CHECKOUT BOUNDED CONTEXT (PHASE 1) ==========
+
+	// Checkout repositories
+	checkoutSessionRepo := checkoutPersistence.NewPostgresCheckoutSessionRepository(db)
+	shippingOptionRepo := checkoutPersistence.NewPostgresShippingOptionRepository(db)
+
+	// Checkout orchestrator
+	checkoutOrchestrator := checkoutApp.NewCheckoutOrchestrator(
+		checkoutSessionRepo,
+		inventoryLevelRepo,
+		inventoryReservationRepo,
+		shippingMethodRepo,
+		shippingRuleRepo,
+		taxJurisdictionRepo,
+		taxRateRepo,
+		taxExemptionRepo,
+	)
+
+	// Checkout command handler
+	checkoutCommandHandler := checkoutCommands.NewCheckoutCommandHandler(
+		checkoutSessionRepo,
+		shippingOptionRepo,
+		checkoutOrchestrator,
+	)
+
+	// Checkout query service
+	checkoutQueryService := checkoutQueries.NewCheckoutQueryService(checkoutSessionRepo, shippingOptionRepo)
+
+	// Checkout HTTP handler
+	adminCheckoutHandler := checkoutHttp.NewCheckoutHandler(checkoutCommandHandler, checkoutQueryService)
+
 	// ========== ROUTER SETUP ========== 
 
 	// Setup router
@@ -288,10 +408,54 @@ func main() {
 		MaxAge:           cfg.CORS.MaxAge,
 	}))
 
+	// Static file serving
+	r.Handle("/static/admin/*", http.StripPrefix("/static/admin/", http.FileServer(http.Dir("web/admin/static"))))
+
 	// Health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy"}`))
+	})
+
+	// Admin Dashboard (HTML)
+	r.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
+		data := renderer.MergeData(renderer.BaseData(), map[string]interface{}{
+			"PageTitle":     "Dashboard",
+			"ActiveSection": "dashboard",
+			"Stats": map[string]interface{}{
+				"TotalOrders":   "0",
+				"TotalRevenue":  "0.00",
+				"TotalProducts": "0",
+				"LowStock":      "0",
+			},
+		})
+		tmplRenderer.RenderHTML(w, "admin/dashboard", data)
+	})
+
+	r.Get("/admin/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		data := renderer.MergeData(renderer.BaseData(), map[string]interface{}{
+			"PageTitle":     "Dashboard",
+			"ActiveSection": "dashboard",
+			"Stats": map[string]interface{}{
+				"TotalOrders":   "0",
+				"TotalRevenue":  "0.00",
+				"TotalProducts": "0",
+				"LowStock":      "0",
+			},
+		})
+		tmplRenderer.RenderHTML(w, "admin/dashboard", data)
+	})
+
+	r.Get("/admin/inventory/list", func(w http.ResponseWriter, r *http.Request) {
+		data := renderer.MergeData(renderer.BaseData(), map[string]interface{}{
+			"PageTitle":     "Inventory",
+			"ActiveSection": "inventory",
+			"Breadcrumbs": []map[string]string{
+				{"label": "Home", "url": "/admin"},
+				{"label": "Inventory", "url": ""},
+			},
+		})
+		tmplRenderer.RenderHTML(w, "admin/inventory/list", data)
 	})
 
 	// Register routes (protected with auth middleware for production)
@@ -314,7 +478,19 @@ func main() {
 	// Fulfillment routes
 	adminShipmentHandler.RegisterRoutes(r)
 
-	log.WithField("contexts", "catalog, customer, order, payment, fulfillment").Info("All bounded contexts initialized")
+	// Shipping routes (Phase 1)
+	adminShippingHandler.RegisterRoutes(r)
+
+	// Inventory routes (Phase 1)
+	adminInventoryHandler.RegisterRoutes(r)
+
+	// Tax routes (Phase 1)
+	adminTaxHandler.RegisterRoutes(r)
+
+	// Checkout routes (Phase 1)
+	adminCheckoutHandler.RegisterRoutes(r)
+
+	log.WithField("contexts", "catalog, customer, order, payment, fulfillment, shipping, inventory, tax, checkout").Info("All bounded contexts initialized")
 
 	// Start HTTP server
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port) // Use host from config

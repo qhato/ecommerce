@@ -60,6 +60,7 @@ import (
 	"github.com/qhato/ecommerce/pkg/event"
 	"github.com/qhato/ecommerce/pkg/logger"
 	"github.com/qhato/ecommerce/pkg/middleware"
+	"github.com/qhato/ecommerce/pkg/renderer"
 	"github.com/qhato/ecommerce/pkg/validator"
 )
 
@@ -125,6 +126,13 @@ func main() {
 
 	// Initialize validator
 	val := validator.New()
+
+	// Initialize template renderer
+	tmplRenderer, err := renderer.NewTemplateRenderer("web", log)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to initialize template renderer")
+	}
+	log.Info("Template renderer initialized")
 
 	// ========== CATALOG BOUNDED CONTEXT ==========
 
@@ -263,14 +271,52 @@ func main() {
 		MaxAge:           cfg.CORS.MaxAge,
 	}))
 
+	// Static file serving
+	r.Handle("/static/storefront/*", http.StripPrefix("/static/storefront/", http.FileServer(http.Dir("web/storefront/static"))))
+
 	// Health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy"}`))
 	})
 
-	// API info
+	// Storefront HTML Pages
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		data := renderer.MergeData(renderer.BaseData(), map[string]interface{}{
+			"PageTitle":    "Home",
+			"HeroTitle":    "Welcome to Broadleaf Commerce",
+			"HeroSubtitle": "Discover amazing products at great prices",
+			"FeaturedCategories": []map[string]interface{}{
+				{"Name": "Electronics", "URL": "electronics", "ImageURL": "/static/storefront/img/categories/electronics.jpg"},
+				{"Name": "Clothing", "URL": "clothing", "ImageURL": "/static/storefront/img/categories/clothing.jpg"},
+				{"Name": "Home & Garden", "URL": "home-garden", "ImageURL": "/static/storefront/img/categories/home.jpg"},
+			},
+			"FeaturedProducts": []map[string]interface{}{},
+			"NewArrivals":      []map[string]interface{}{},
+		})
+		tmplRenderer.RenderHTML(w, "storefront/home", data)
+	})
+
+	r.Get("/checkout", func(w http.ResponseWriter, r *http.Request) {
+		data := renderer.MergeData(renderer.BaseData(), map[string]interface{}{
+			"PageTitle":   "Checkout",
+			"CurrentStep": 1,
+			"Cart": map[string]interface{}{
+				"Subtotal":     "99.99",
+				"ShippingCost": "9.99",
+				"Tax":          "8.00",
+				"Total":        "117.98",
+			},
+			"ShippingMethods": []map[string]interface{}{
+				{"ID": "standard", "Name": "Standard Shipping", "Description": "5-7 business days", "EstimatedDays": "5-7", "Cost": 9.99},
+				{"ID": "express", "Name": "Express Shipping", "Description": "2-3 business days", "EstimatedDays": "2-3", "Cost": 19.99},
+			},
+		})
+		tmplRenderer.RenderHTML(w, "storefront/checkout", data)
+	})
+
+	// API info
+	r.Get("/api", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{

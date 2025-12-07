@@ -1,0 +1,140 @@
+{{define "partials/nav.html"}}
+<nav class="sidebar" id="adminSidebar">
+    <div class="sidebar-header">
+        <a href="/admin" class="sidebar-brand">
+            <img src="/static/admin/img/logo.png" alt="Broadleaf Commerce" class="sidebar-logo">
+            <span class="sidebar-brand-text">Broadleaf Admin</span>
+        </a>
+    </div>
+
+    <div class="sidebar-menu">
+        <ul class="nav flex-column">
+            <!-- Dashboard -->
+            <li class="nav-item">
+                <a class="nav-link{{if eq .ActiveSection "dashboard"}} active{{end}}" href="/admin">
+                    <i class="fa fa-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+
+            <!-- Catalog -->
+            <li class="nav-item has-submenu">
+                <a class="nav-link{{if eq .ActiveSection "catalog"}} active{{end}}" href="#catalogMenu" data-bs-toggle="collapse">
+                    <i class="fa fa-cube"></i>
+                    <span>Catalog</span>
+                    <i class="fa fa-chevron-down submenu-icon"></i>
+                </a>
+                <div class="collapse{{if eq .ActiveSection "catalog"}} show{{end}}" id="catalogMenu">
+                    <ul class="nav flex-column submenu">
+                        <li class="nav-item"><a class="nav-link" href="/admin/catalog/products">Products</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/catalog/categories">Categories</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/catalog/skus">SKUs</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- Inventory -->
+            <li class="nav-item has-submenu">
+                <a class="nav-link{{if eq .ActiveSection "inventory"}} active{{end}}" href="#inventoryMenu" data-bs-toggle="collapse">
+                    <i class="fa fa-cubes"></i>
+                    <span>Inventory</span>
+                    <i class="fa fa-chevron-down submenu-icon"></i>
+                </a>
+                <div class="collapse{{if eq .ActiveSection "inventory"}} show{{end}}" id="inventoryMenu">
+                    <ul class="nav flex-column submenu">
+                        <li class="nav-item"><a class="nav-link" href="/admin/inventory/levels">Inventory Levels</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/inventory/reservations">Reservations</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/inventory/low-stock">Low Stock</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- Orders -->
+            <li class="nav-item has-submenu">
+                <a class="nav-link{{if eq .ActiveSection "orders"}} active{{end}}" href="#ordersMenu" data-bs-toggle="collapse">
+                    <i class="fa fa-shopping-cart"></i>
+                    <span>Orders</span>
+                    <i class="fa fa-chevron-down submenu-icon"></i>
+                </a>
+                <div class="collapse{{if eq .ActiveSection "orders"}} show{{end}}" id="ordersMenu">
+                    <ul class="nav flex-column submenu">
+                        <li class="nav-item"><a class="nav-link" href="/admin/orders">All Orders</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/orders/pending">Pending</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/orders/shipped">Shipped</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- Customers -->
+            <li class="nav-item">
+                <a class="nav-link{{if eq .ActiveSection "customers"}} active{{end}}" href="/admin/customers">
+                    <i class="fa fa-users"></i>
+                    <span>Customers</span>
+                </a>
+            </li>
+
+            <!-- Shipping -->
+            <li class="nav-item has-submenu">
+                <a class="nav-link{{if eq .ActiveSection "shipping"}} active{{end}}" href="#shippingMenu" data-bs-toggle="collapse">
+                    <i class="fa fa-truck"></i>
+                    <span>Shipping</span>
+                    <i class="fa fa-chevron-down submenu-icon"></i>
+                </a>
+                <div class="collapse{{if eq .ActiveSection "shipping"}} show{{end}}" id="shippingMenu">
+                    <ul class="nav flex-column submenu">
+                        <li class="nav-item"><a class="nav-link" href="/admin/shipping/methods">Shipping Methods</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/shipping/carriers">Carriers</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/shipping/rules">Shipping Rules</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- Tax -->
+            <li class="nav-item has-submenu">
+                <a class="nav-link{{if eq .ActiveSection "tax"}} active{{end}}" href="#taxMenu" data-bs-toggle="collapse">
+                    <i class="fa fa-calculator"></i>
+                    <span>Tax</span>
+                    <i class="fa fa-chevron-down submenu-icon"></i>
+                </a>
+                <div class="collapse{{if eq .ActiveSection "tax"}} show{{end}}" id="taxMenu">
+                    <ul class="nav flex-column submenu">
+                        <li class="nav-item"><a class="nav-link" href="/admin/tax/jurisdictions">Jurisdictions</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/tax/rates">Tax Rates</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/tax/exemptions">Exemptions</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- Promotions -->
+            <li class="nav-item has-submenu">
+                <a class="nav-link{{if eq .ActiveSection "promotions"}} active{{end}}" href="#promotionsMenu" data-bs-toggle="collapse">
+                    <i class="fa fa-tags"></i>
+                    <span>Promotions</span>
+                    <i class="fa fa-chevron-down submenu-icon"></i>
+                </a>
+                <div class="collapse{{if eq .ActiveSection "promotions"}} show{{end}}" id="promotionsMenu">
+                    <ul class="nav flex-column submenu">
+                        <li class="nav-item"><a class="nav-link" href="/admin/promotions/offers">Offers</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/promotions/coupons">Coupons</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- Settings -->
+            <li class="nav-item has-submenu">
+                <a class="nav-link{{if eq .ActiveSection "settings"}} active{{end}}" href="#settingsMenu" data-bs-toggle="collapse">
+                    <i class="fa fa-cog"></i>
+                    <span>Settings</span>
+                    <i class="fa fa-chevron-down submenu-icon"></i>
+                </a>
+                <div class="collapse{{if eq .ActiveSection "settings"}} show{{end}}" id="settingsMenu">
+                    <ul class="nav flex-column submenu">
+                        <li class="nav-item"><a class="nav-link" href="/admin/settings/store">Store Settings</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/settings/users">Users & Roles</a></li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+    </div>
+</nav>
+{{end}}
